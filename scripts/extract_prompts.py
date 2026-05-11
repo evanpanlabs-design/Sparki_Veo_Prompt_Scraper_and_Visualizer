@@ -19,6 +19,9 @@ from pathlib import Path
 from threading import Lock
 from typing import Optional
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import requests
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -121,7 +124,7 @@ def extract_prompts(
     api_base = api_base or os.environ.get("OPENAI_API_BASE", "https://api.minimaxi.com/v1")
     api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
     if not api_key:
-        print("ERROR: OPENAI_API_KEY not set. Set it as env var or pass --api-key.")
+        print("ERROR: OPENAI_API_KEY not set. Create a .env file from .env.example and add your API key.")
         sys.exit(1)
 
     prompts = []

@@ -30,13 +30,34 @@ A two-phase pipeline that scrapes X/Twitter for AI generation prompts and extrac
 
 ## Prerequisites
 
+### 0. Configure API Key (Required before Phase 2)
+
+Create a `.env` file in the project root:
+
+```bash
+# 1. Copy the example
+cp .env.example .env
+
+# 2. Edit with your MiniMax credentials
+#    Get your API key from https://platform.minimaxi.com
+```
+
+Then edit `.env`:
+```bash
+OPENAI_API_KEY=sk-your-api-key-here
+OPENAI_API_BASE=https://api.minimaxi.com/v1
+LLM_MODEL=MiniMax-M2.7
+```
+
+> **Never commit `.env`** — it's in `.gitignore`. If git still tracks it, run `git rm --cached .env`.
+
 ### 1. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Or manually: `pip install playwright twikit pyyaml requests`
+Or manually: `pip install playwright twikit pyyaml requests python-dotenv`
 
 ### 2. Install Playwright Browsers
 
@@ -57,14 +78,6 @@ python scripts/browser_auth.py --email your_email@example.com
 ```
 
 Cookies are saved to `outputs/cookies.json` and reused on subsequent runs.
-
-### 4. Set LLM API Key (Phase 2 only)
-
-```bash
-export OPENAI_API_KEY="sk-..."
-export OPENAI_API_BASE="https://api.openai.com/v1"   # or your proxy endpoint
-export LLM_MODEL="gpt-4o"                              # default: gpt-4o
-```
 
 ---
 
@@ -209,10 +222,10 @@ python scripts/extract_prompts.py --input outputs/raw_tweets.json --output outpu
 
 ## Workflow Orchestration (for Claude Code agent)
 
-1. **Read config**: Load `configs/x-scraper.yaml` — get queries list and negative_keywords
-2. **Phase 1**: Run `x_multi_search.py` → produces `outputs/raw_tweets.json`
-3. **Verify Phase 1 output**: Check that tweets array is non-empty
-4. **Set LLM env vars**: Confirm `OPENAI_API_KEY` is set; if not, prompt user
+1. **Check API key**: If `OPENAI_API_KEY` is not set in environment, prompt user to create `.env` from `.env.example` and configure their MiniMax credentials
+2. **Read config**: Load `configs/x-scraper.yaml` — get queries list and negative_keywords
+3. **Phase 1**: Run `x_multi_search.py` → produces `outputs/raw_tweets.json`
+4. **Verify Phase 1 output**: Check that tweets array is non-empty
 5. **Phase 2**: Run `extract_prompts.py` → produces `outputs/prompts.json`
 6. **Present results**: Summarize total tweets scraped, prompts extracted, category breakdown
 
@@ -233,7 +246,7 @@ python scripts/extract_prompts.py --input outputs/raw_tweets.json --output outpu
 
 | Error | Solution |
 |-------|----------|
-| "OPENAI_API_KEY not set" | Set `OPENAI_API_KEY` env var before running Phase 2 |
+| "OPENAI_API_KEY not set" | Create `.env` from `.env.example` and fill in your MiniMax API key |
 | LLM returns non-JSON | Script logs error and skips the tweet; check API key and model |
 | Rate limit from LLM API | Reduce call frequency or use a slower model |
 | Empty prompts output | Increase `min_likes` in Phase 1 to filter low-quality tweets that LLM skips |
