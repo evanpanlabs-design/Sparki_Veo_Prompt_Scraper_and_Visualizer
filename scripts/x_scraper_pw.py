@@ -4,18 +4,15 @@ Complete Playwright-based X scraper.
 Flow:
   1. Launch browser with saved cookies
   2. Navigate to search page (try Top/Latest tabs), wait 5s
-  3. SCROLL AND EXTRACT in a loop:
-       - Scroll to bottom
-       - Wait 5s for content to load
-       - Extract all tweets currently in DOM
-       - Check if new tweets appeared
-       - Stop if no new tweets for 3 consecutive scrolls
+  3. Scroll-and-extract loop: scroll to bottom → wait 5s → extract → repeat
+     Stops early when no new tweets appear for 3 consecutive scrolls
   4. Round-1 filter: likes >= min_likes
   5. For each surviving tweet:
        a. Visit author profile → get followers_count
        b. Visit tweet detail  → get full text + views
-       c. Round-2 filter: followers >= min_followers, views >= min_views
-  6. Output filtered tweets as JSON
+       c. Local keyword filter: all query keywords must appear in text
+       d. Round-2 filter: followers >= min_followers, views >= min_views
+  6. Sort by word count (descending), output as JSON
 
 Usage:
     python scripts/x_scraper_pw.py --query "veo prompt" --min-likes 50 --min-views 1000 --min-followers 1000
@@ -67,6 +64,17 @@ def parse_metric(text: str) -> int:
         return int(text)
     except ValueError:
         return 0
+
+
+def text_matches_all_keywords(text: str, keywords: list[str]) -> bool:
+    """Return True if text contains ALL keywords (case-insensitive)."""
+    text_lower = text.lower()
+    return all(kw.lower() in text_lower for kw in keywords)
+
+
+def word_count(text: str) -> int:
+    """Count words in text (split on whitespace)."""
+    return len(text.split())
 
 
 # ─── Search page extraction ────────────────────────────────────────────────────
@@ -193,12 +201,12 @@ def get_tweet_detail(context, tweet_url: str) -> tuple[str, int]:
         return "", 0
 
 
-# ─── Scroll + extract: scroll to bottom, wait, extract, repeat ────────────────
+# ─── Scroll + extract loop ─────────────────────────────────────────────────────
 
 def scroll_and_extract(page, max_scrolls: int = 20, stale_threshold: int = 3) -> list[dict]:
-    """Scroll to bottom repeatedly, extracting tweets at each step.
+    """Scroll-to-bottom loop with extraction at each step.
 
-    Stops early if no new tweets appear for stale_threshold consecutive scrolls.
+    Stops early when no new tweets appear for stale_threshold consecutive scrolls.
     Returns deduplicated list of all extracted tweets.
     """
     all_tweets = []
@@ -206,14 +214,11 @@ def scroll_and_extract(page, max_scrolls: int = 20, stale_threshold: int = 3) ->
     stale_count = 0
 
     for i in range(max_scrolls):
-        # Scroll to bottom
         page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-        _time.sleep(5)   # wait for new content to load
+        _time.sleep(5)
 
-        # Extract tweets currently in DOM
         tweets = extract_search_tweets(page)
 
-        # Deduplicate and count new ones
         new_count = 0
         for t in tweets:
             if t["tweet_id"] not in seen_ids:
@@ -223,7 +228,6 @@ def scroll_and_extract(page, max_scrolls: int = 20, stale_threshold: int = 3) ->
 
         print(f"    Scroll {i+1}/{max_scrolls} — {len(tweets)} in DOM, {new_count} new, total: {len(all_tweets)}")
 
-        # Check if new tweets loaded
         if new_count == 0:
             stale_count += 1
             if stale_count >= stale_threshold:
@@ -287,7 +291,6 @@ def scrape(
                 break
             except Exception as e:
                 print(f"  {tab} tab failed: {e}")
-                # Try the other tab
                 try:
                     other = "Latest" if tab == "Top" else "Top"
                     page.locator(f'span:has-text("{other}")').first.click()
@@ -304,7 +307,7 @@ def scrape(
             browser.close()
             sys.exit(1)
 
-        # ── Step 2: scroll + extract in a loop ─────────────────────────────
+        # ── Step 2: scroll + extract loop ─────────────────────────────────
         print(f"\nScrolling and extracting (up to {scroll_times} scrolls, auto-stop on stale)...")
         all_tweets = scroll_and_extract(page, max_scrolls=scroll_times, stale_threshold=3)
         print(f"\nTotal extracted (after dedup): {len(all_tweets)}")
@@ -315,7 +318,7 @@ def scrape(
             _save_output(output_path, query, min_likes, min_views, min_followers, [])
             return []
 
-        # ── Step 3: round-1 filter (likes only — views need detail page) ───
+        # ── Step 3: round-1 filter (likes only) ────────────────────────────
         print(f"\nRound-1 filter: likes >= {min_likes}")
         r1 = [t for t in all_tweets if t["favorite_count"] >= min_likes]
         print(f"  Passed: {len(r1)}")
@@ -328,6 +331,7 @@ def scrape(
 
         # ── Step 4: enrich each surviving tweet ─────────────────────────────
         print(f"\nEnriching {len(r1)} tweets...")
+        keywords = query.split()   # split search query into individual keywords
         final_results = []
 
         for i, t in enumerate(r1):
@@ -346,7 +350,6 @@ def scrape(
             view_count = detail_views if detail_views > 0 else t["view_count"]
             print(f"views={view_count}", end=" | ", flush=True)
 
-            # Views filter: only apply if views > 0 (0 = analytics not available)
             if view_count > 0 and min_views > 0 and view_count < min_views:
                 print("FILTERED (views)")
                 rnd_delay(200, 800)
@@ -354,6 +357,12 @@ def scrape(
 
             if not full_text:
                 full_text = t["short_text"]
+
+            # Local keyword filter: all keywords must appear in text (case-insensitive)
+            if not text_matches_all_keywords(full_text, keywords):
+                print("FILTERED (keywords)")
+                rnd_delay(200, 800)
+                continue
 
             tweet_data = {
                 "tweet_id":        t["tweet_id"],
@@ -382,7 +391,8 @@ def scrape(
         page.close()
         browser.close()
 
-        final_results.sort(key=lambda x: x["favorite_count"], reverse=True)
+        # Sort by word count descending (more words = higher rank)
+        final_results.sort(key=lambda x: word_count(x["text"]), reverse=True)
         _save_output(output_path, query, min_likes, min_views, min_followers, final_results)
         return final_results
 
