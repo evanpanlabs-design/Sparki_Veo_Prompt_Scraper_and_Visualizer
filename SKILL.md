@@ -169,7 +169,7 @@ python scripts/extract_prompts.py --input outputs/raw_tweets.json --output outpu
 |----------|-------------|
 | `video-generation` | Prompt for AI video models (Veo, Sora, Kling) — may include motion, camera movement, duration |
 | `image-generation` | Prompt for still image models (Midjourney, DALL-E, Flux) |
-| `cinematic` | Video/image prompt with film-specific terms (f-stop, depth of field, film grain, aspect ratio) |
+| `cinematic` | Video/image prompt with film-specific terms (lens, f-stop, depth of field, film grain, aspect ratio) |
 | `character-design` | Prompt focused on consistent character figures for animation/comics |
 | `product-photography` | Prompt for realistic product shots, commercial advertising style |
 | `other` | Prompt that doesn't fit above categories |

@@ -29,7 +29,7 @@ DEFAULT_INPUT = PROJECT_ROOT / "outputs" / "raw_tweets.json"
 DEFAULT_OUTPUT = PROJECT_ROOT / "outputs" / "prompts.json"
 DEFAULT_MODEL = "MiniMax-M2.7"
 DEFAULT_CONCURRENCY = 15
-SYSTEM_PROMPT = 'You are a prompt extraction specialist for AI video generation. Respond with valid JSON only, no markdown, no explanation: {"is_prompt": true or false, "category": "video-generation" | "cinematic" | null, "title": "short title" or null, "prompt_text": "text" or null, "notes": "note" or null}.'
+SYSTEM_PROMPT = 'You are a prompt extraction specialist for AI video and image generation. Respond with valid JSON only, no markdown, no explanation: {"is_prompt": true or false, "category": "video-generation" | "image-generation" | "cinematic" | "character-design" | "product-photography" | "other" | null, "title": "short title" or null, "prompt_text": "text" or null, "notes": "note" or null}.'
 
 
 def load_tweets(input_path: Path) -> list[dict]:
