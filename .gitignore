@@ -1,0 +1,24 @@
+# Dependencies
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Sensitive data - NEVER commit
+outputs/cookies.json
+
+# Output data (regenerated each run)
+outputs/*.json
+!outputs/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

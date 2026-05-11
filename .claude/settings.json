@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python scripts/x_scraper.py*)",
+      "Bash(python scripts/auth_setup.py*)",
+      "Bash(pip install*)",
+      "Bash(bash scripts/setup.sh*)"
+    ]
+  }
+}

@@ -1,0 +1,54 @@
+Looking in indexes: https://pypi.tuna.tsinghua.edu.cn/simple
+Collecting twikit
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/4e/e0/69c125e558c429a58e6adcf87880b70baea980898eee4ea855e6d3b7822a/twikit-2.3.3-py3-none-any.whl (82 kB)
+     -------------------------------------- 82.9/82.9 kB 422.2 kB/s eta 0:00:00
+Requirement already satisfied: httpx[socks] in c:\users\86189\appdata\local\programs\python\python311\lib\site-packages (from twikit) (0.28.1)
+Collecting filetype (from twikit)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/18/79/1b8fa1bb3568781e84c9200f951c735f3f157429f44be0495da55894d620/filetype-1.2.0-py2.py3-none-any.whl (19 kB)
+Collecting beautifulsoup4 (from twikit)
+  Using cached https://pypi.tuna.tsinghua.edu.cn/packages/1a/39/47f9197bdd44df24d67ac8893641e16f386c984a0619ef2ee4c51fbbc019/beautifulsoup4-4.14.3-py3-none-any.whl (107 kB)
+Collecting pyotp (from twikit)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/c3/c0/c33c8792c3e50193ef55adb95c1c3c2786fe281123291c2dbf0eaab95a6f/pyotp-2.9.0-py3-none-any.whl (13 kB)
+Collecting lxml (from twikit)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/02/05/d60c732b56da5085175c07c74b2df4e6d181b0c9a61e1691474f06ef4b39/lxml-6.1.0-cp311-cp311-win_amd64.whl (4.0 MB)
+     ---------------------------------------- 4.0/4.0 MB 1.6 MB/s eta 0:00:00
+Collecting webvtt-py (from twikit)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/f3/ed/aad7e0f5a462d679f7b4d2e0d8502c3096740c883b5bbed5103146480937/webvtt_py-0.5.1-py3-none-any.whl (19 kB)
+Collecting m3u8 (from twikit)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/f8/31/50f3c38b38ff28635ff9c4a4afefddccc5f1b57457b539bdbdf75ce18669/m3u8-6.0.0-py3-none-any.whl (24 kB)
+Collecting Js2Py-3.13 (from twikit)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/47/5f/4bdab35d30055613c58f681f03d3a76e06c874485aced646fac763a1d552/Js2Py_3.13-0.74.1-py3-none-any.whl (611 kB)
+     -------------------------------------- 611.8/611.8 kB 1.2 MB/s eta 0:00:00
+Collecting soupsieve>=1.6.1 (from beautifulsoup4->twikit)
+  Using cached https://pypi.tuna.tsinghua.edu.cn/packages/46/2c/1462b1d0a634697ae9e55b3cecdcb64788e8b7d63f54d923fcd0bb140aed/soupsieve-2.8.3-py3-none-any.whl (37 kB)
+Requirement already satisfied: typing-extensions>=4.0.0 in c:\users\86189\appdata\local\programs\python\python311\lib\site-packages (from beautifulsoup4->twikit) (4.15.0)
+Requirement already satisfied: anyio in c:\users\86189\appdata\local\programs\python\python311\lib\site-packages (from httpx[socks]->twikit) (4.12.1)
+Requirement already satisfied: certifi in c:\users\86189\appdata\local\programs\python\python311\lib\site-packages (from httpx[socks]->twikit) (2026.1.4)
+Requirement already satisfied: httpcore==1.* in c:\users\86189\appdata\local\programs\python\python311\lib\site-packages (from httpx[socks]->twikit) (1.0.9)
+Requirement already satisfied: idna in c:\users\86189\appdata\local\programs\python\python311\lib\site-packages (from httpx[socks]->twikit) (3.11)
+Collecting socksio==1.* (from httpx[socks]->twikit)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/37/c3/6eeb6034408dac0fa653d126c9204ade96b819c936e136c5e8a6897eee9c/socksio-1.0.0-py3-none-any.whl (12 kB)
+Requirement already satisfied: h11>=0.16 in c:\users\86189\appdata\local\programs\python\python311\lib\site-packages (from httpcore==1.*->httpx[socks]->twikit) (0.16.0)
+Collecting tzlocal>=1.2 (from Js2Py-3.13->twikit)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/c2/14/e2a54fabd4f08cd7af1c07030603c3356b74da07f7cc056e600436edfa17/tzlocal-5.3.1-py3-none-any.whl (18 kB)
+Requirement already satisfied: six>=1.10 in c:\users\86189\appdata\local\programs\python\python311\lib\site-packages (from Js2Py-3.13->twikit) (1.17.0)
+Collecting pyjsparser>=2.5.1 (from Js2Py-3.13->twikit)
+  Downloading https://pypi.tuna.tsinghua.edu.cn/packages/48/ef/c72abcfa2c6accd03e7c89c400790fc3d908c5804d50a7c4e9ceabd74d23/pyjsparser-2.7.1.tar.gz (24 kB)
+  Installing build dependencies: started
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Requirement already satisfied: tzdata in c:\users\86189\appdata\local\programs\python\python311\lib\site-packages (from tzlocal>=1.2->Js2Py-3.13->twikit) (2025.3)
+Building wheels for collected packages: pyjsparser
+  Building wheel for pyjsparser (pyproject.toml): started
+  Building wheel for pyjsparser (pyproject.toml): finished with status 'done'
+  Created wheel for pyjsparser: filename=pyjsparser-2.7.1-py3-none-any.whl size=26014 sha256=d7d9af054dfb8c7e1685ed372cdd78280db3d4e74d8b4b0a868effea5c97f1c5
+  Stored in directory: c:\users\86189\appdata\local\pip\cache\wheels\4b\0f\97\3303e16487db27cc331cdd10180797ceb70cba41dbbfc7ed48
+Successfully built pyjsparser
+Installing collected packages: pyjsparser, filetype, webvtt-py, tzlocal, soupsieve, socksio, pyotp, m3u8, lxml, Js2Py-3.13, beautifulsoup4, twikit
+Successfully installed Js2Py-3.13-0.74.1 beautifulsoup4-4.14.3 filetype-1.2.0 lxml-6.1.0 m3u8-6.0.0 pyjsparser-2.7.1 pyotp-2.9.0 socksio-1.0.0 soupsieve-2.8.3 twikit-2.3.3 tzlocal-5.3.1 webvtt-py-0.5.1
+
+[notice] A new release of pip is available: 24.0 -> 26.1.1
+[notice] To update, run: python.exe -m pip install --upgrade pip
