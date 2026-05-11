@@ -1,0 +1,30 @@
+# X Scraper Configuration
+# Modify queries and negative keywords here — no code changes needed.
+
+# Positive search queries — each runs independently, results are deduplicated by tweet_id
+queries:
+  - "veo prompt"
+  - "Veo 3 prompt"
+  - "Gemini Veo prompt"
+  - "Google Veo 3"
+  - "Veo 3.1 prompt"
+
+# Negative keywords: exclude tweet if text contains any of these
+# UNLESS the text also contains a Veo-related term (case-insensitive)
+# This keeps tweets that compare Veo with competitors while filtering pure competitor posts
+negative_keywords:
+  - "ChatGPT"
+  - "Doubao"
+  - "Seedance"
+  - "Kling"
+  - "Sora"
+  - "Runway"
+  - "Pika"
+  - "Luma Dream"
+  - "Hailuo AI"
+  - " Kling AI"
+
+# Engagement filters applied during multi-search
+engagement:
+  min_likes: 50
+  min_followers: 1000
