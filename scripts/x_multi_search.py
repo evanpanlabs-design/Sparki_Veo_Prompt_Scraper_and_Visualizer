@@ -23,6 +23,8 @@ import yaml
 
 from playwright.sync_api import sync_playwright
 
+from db import init_db, create_scrape, insert_tweets
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_COOKIES = PROJECT_ROOT / "outputs" / "cookies.json"
 DEFAULT_RAW_OUTPUT = PROJECT_ROOT / "outputs" / "raw_tweets.json"
@@ -317,29 +319,27 @@ def scrape_all(
     print(f"\nEnriching {len(all_tweets)} tweets (followers + full text)...")
     enriched = []
 
-    for i, t in enumerate(all_tweets):
-        screen = t["author_screen"]
-        print(f"  [{i+1}/{len(all_tweets)}] @{screen}...", end=" ", flush=True)
+    # Reuse a single browser + context for all enrichment calls (huge speedup)
+    with sync_playwright() as p2:
+        mini_browser = p2.chromium.launch(
+            headless=False,
+            proxy=proxy_config,
+            args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
+        )
+        mini_context = mini_browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        )
+        mini_context.add_cookies(load_cookies(cookies_path))
 
-        # Re-create context for enrichment (browser already closed above)
-        # We need a new mini browser for enrichment
-        with sync_playwright() as p2:
-            mini_browser = p2.chromium.launch(
-                headless=False,
-                proxy=proxy_config,
-                args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
-            )
-            mini_context = mini_browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            )
-            mini_context.add_cookies(load_cookies(cookies_path))
+        for i, t in enumerate(all_tweets):
+            screen = t["author_screen"]
+            print(f"  [{i+1}/{len(all_tweets)}] @{screen}...", end=" ", flush=True)
 
             followers = get_follower_count(mini_context, t["profile_url"])
             print(f"followers={followers}", end=" | ", flush=True)
 
             if min_followers > 0 and followers < min_followers:
                 print("FILTERED (followers)")
-                mini_browser.close()
                 rnd_delay(200, 800)
                 continue
 
@@ -358,7 +358,6 @@ def scrape_all(
 
             if has_negative and not is_veo:
                 print(f"  FILTERED (negative keyword: {negative_keywords})")
-                mini_browser.close()
                 rnd_delay(200, 800)
                 continue
 
@@ -380,9 +379,9 @@ def scrape_all(
                 },
             }
             enriched.append(tweet_data)
-            mini_browser.close()
+            rnd_delay(200, 1000)
 
-        rnd_delay(200, 1000)
+        mini_browser.close()
 
     print(f"\nTotal tweets after all filters: {len(enriched)}")
 
@@ -402,7 +401,19 @@ def scrape_all(
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(result_data, f, ensure_ascii=False, indent=2)
 
+    # Write to SQLite database
+    init_db()
+    config_yaml = config_path.read_text(encoding="utf-8")
+    scrape_id = create_scrape(
+        queries=queries,
+        config_yaml=config_yaml,
+        total_raw=len(enriched),
+        total_dedup=len(enriched),
+    )
+    insert_tweets(scrape_id, enriched)
+
     print(f"Saved to {output_path}")
+    print(f"Written to database: scrape_id={scrape_id}")
     return enriched
 
 

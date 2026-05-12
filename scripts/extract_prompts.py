@@ -1,21 +1,24 @@
 """
-Prompt extraction via LLM — reads raw_tweets.json, calls OpenAI-compatible API
-concurrently for each tweet, classifies whether it contains a usable generation
-Prompt, and extracts title/category/prompt_text.
+Prompt extraction via LLM — reads tweets from DB, calls LLM API for each tweet,
+classifies prompts, manages dynamic Category library with human-in-the-loop.
 
 Usage:
     python scripts/extract_prompts.py
-    python scripts/extract_prompts.py --input outputs/raw_tweets.json --output outputs/prompts.json --concurrency 15
+    python scripts/extract_prompts.py --scrape-id 3
+    python scripts/extract_prompts.py --output outputs/prompts.json
 """
+
+import sys
+from pathlib import Path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 import argparse
 import json
 import os
-import sys
 import time as _time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from pathlib import Path
 from threading import Lock
 from typing import Optional
 
@@ -24,18 +27,37 @@ load_dotenv()
 
 import requests
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+from scripts.db import (
+    init_db,
+    get_categories,
+    get_pending_suggestions,
+    suggest_category,
+    approve_suggestion,
+    reject_suggestion,
+    insert_prompts,
+    get_recent_tweets,
+)
+
 DEFAULT_INPUT = PROJECT_ROOT / "outputs" / "raw_tweets.json"
 DEFAULT_OUTPUT = PROJECT_ROOT / "outputs" / "prompts.json"
 DEFAULT_MODEL = "MiniMax-M2.7"
 DEFAULT_CONCURRENCY = 15
-SYSTEM_PROMPT = 'You are a prompt extraction specialist for AI video and image generation. Respond with valid JSON only, no markdown, no explanation: {"is_prompt": true or false, "category": "video-generation" | "image-generation" | "cinematic" | "character-design" | "product-photography" | "other" | null, "title": "short title" or null, "prompt_text": "text" or null, "notes": "note" or null}.'
 
 
-def load_tweets(input_path: Path) -> list[dict]:
-    with open(input_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    return data.get("tweets", [])
+def build_system_prompt(categories: list[dict]) -> str:
+    """Build category-aware system prompt with active categories."""
+    cat_names = ", ".join(c["name"] for c in categories)
+    return (
+        f"You are a prompt extraction specialist for AI video and image generation. "
+        f"Respond with valid JSON only, no markdown, no explanation: "
+        f'{{"is_prompt": true or false, '
+        f'"category": "{cat_names}" | "other" | null, '
+        f'"title": "short title" or null, '
+        f'"prompt_text": "text" or null, '
+        f'"notes": "note" or null}}. '
+        f"If the category does not match any existing category, use 'other'. "
+        f"If it is not a prompt at all, set is_prompt=false."
+    )
 
 
 def call_llm(
@@ -43,6 +65,7 @@ def call_llm(
     api_base: str,
     api_key: str,
     model: str,
+    system_prompt: str,
     timeout: int = 60,
 ) -> Optional[dict]:
     url = f"{api_base.rstrip('/')}/chat/completions"
@@ -53,7 +76,7 @@ def call_llm(
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Tweet:\n{text}"},
         ],
         "temperature": 0.0,
@@ -64,7 +87,6 @@ def call_llm(
         if resp.status_code != 200:
             return None
         raw = resp.json()["choices"][0]["message"]["content"]
-        # Strip </think> thinking blocks to isolate the JSON response
         json_text = raw
         last_brace = json_text.rfind("}")
         first_brace = json_text.find("{")
@@ -75,25 +97,31 @@ def call_llm(
         return None
 
 
-def process_tweet(tweet: dict, api_base: str, api_key: str, model: str) -> tuple[dict, bool]:
-    """Returns (prompt_dict, was_extracted)"""
-    screen = tweet.get("author", {}).get("screen_name", "?")
-    result = call_llm(tweet.get("text", ""), api_base, api_key, model)
+def process_tweet(
+    tweet: dict,
+    api_base: str,
+    api_key: str,
+    model: str,
+    system_prompt: str,
+) -> tuple[dict, bool, Optional[dict]]:
+    """Returns (prompt_dict, was_extracted, category_suggestion_or_None)."""
+    result = call_llm(tweet.get("text", ""), api_base, api_key, model, system_prompt)
 
     if result is None or not result.get("is_prompt", False):
-        return None, False
+        return None, False, None
 
-    return {
-        "tweet_id":     tweet.get("tweet_id", ""),
-        "url":          tweet.get("url", ""),
-        "category":     result.get("category"),
-        "title":        result.get("title"),
-        "prompt_text":  result.get("prompt_text"),
-        "notes":        result.get("notes"),
+    category = result.get("category", "other")
+    prompt_dict = {
+        "tweet_id":   tweet.get("tweet_id", ""),
+        "url":        tweet.get("url", ""),
+        "category":   category,
+        "title":      result.get("title", ""),
+        "prompt_text": result.get("prompt_text", ""),
+        "notes":      result.get("notes", ""),
         "author": {
-            "name":        tweet.get("author", {}).get("name", ""),
-            "screen_name": screen,
-            "followers":   tweet.get("author", {}).get("followers_count", 0),
+            "name":          tweet.get("author_name", ""),
+            "screen_name":   tweet.get("author_screen", ""),
+            "followers_count": tweet.get("followers_count", 0),
         },
         "engagement": {
             "likes":    tweet.get("favorite_count", 0),
@@ -101,7 +129,98 @@ def process_tweet(tweet: dict, api_base: str, api_key: str, model: str) -> tuple
             "replies":  tweet.get("reply_count", 0),
             "views":    tweet.get("view_count", 0),
         },
-    }, True
+    }
+    return prompt_dict, True, None
+
+
+def collect_new_category_suggestions(
+    prompts: list[dict],
+    known_categories: set[str],
+    api_key: str,
+    api_base: str,
+    model: str,
+) -> list[dict]:
+    """Check prompts for new categories not in known list, ask LLM for descriptions."""
+    new_cat_prompts = [p for p in prompts if p["category"] not in known_categories]
+    if not new_cat_prompts:
+        return []
+
+    suggestions = []
+    for p in new_cat_prompts:
+        reason = (
+            f"Tweet @{p.get('author',{}).get('screen_name','?')} "
+            f"classified as '{p['category']}' but this category is not in DB. "
+            f"Prompt: {p.get('prompt_text','')[:100]}"
+        )
+        sug_id = suggest_category(
+            name=p["category"],
+            reason=reason,
+            prompt_text=p.get("text", "") or p.get("prompt_text", ""),
+            suggested_by=model,
+            description="",
+        )
+        suggestions.append({"id": sug_id, "name": p["category"], "reason": reason})
+    return suggestions
+
+
+def handle_new_categories(
+    prompts: list[dict],
+    known_categories: set[str],
+    api_key: str,
+    api_base: str,
+    model: str,
+) -> list[dict]:
+    """Check prompts for unknown categories, pause and ask user for each one."""
+    new_cat_prompts = [p for p in prompts if p["category"] not in known_categories]
+    if not new_cat_prompts:
+        return prompts
+
+    # Group by category name
+    from collections import defaultdict
+    grouped = defaultdict(list)
+    for p in new_cat_prompts:
+        grouped[p["category"]].append(p)
+
+    for cat_name, cat_prompts in grouped.items():
+        sample = cat_prompts[0]
+        print(f"\n⚠️  New category detected: '{cat_name}'")
+        print(f"   Sample prompt: {sample.get('prompt_text','')[:100]}...")
+        print(f"   From: @{sample.get('author',{}).get('screen_name','?')}")
+        print(f"   Total tweets with this category: {len(cat_prompts)}")
+        print()
+        print(f"Options:")
+        print(f"  [y] Approve — add '{cat_name}' to categories")
+        print(f"  [n] Reject  — mark as 'other', don't add category")
+        print(f"  [r] Rename  — type new name to replace '{cat_name}'")
+        choice = input("Your choice [y/n/r]: ").strip().lower()
+
+        if choice == "y":
+            approve_suggestion(suggest_category(
+                name=cat_name,
+                reason=f"Approved manually. {len(cat_prompts)} tweets.",
+                prompt_text=sample.get("prompt_text", ""),
+                suggested_by=model,
+            ))
+            print(f"  ✓ Category '{cat_name}' added.")
+        elif choice == "r":
+            new_name = input(f"  New category name: ").strip()
+            if new_name:
+                approve_suggestion(suggest_category(
+                    name=new_name,
+                    reason=f"Renamed from '{cat_name}' manually.",
+                    prompt_text=sample.get("prompt_text", ""),
+                    suggested_by=model,
+                ))
+                print(f"  ✓ Category '{new_name}' added.")
+                # Update prompts with new category
+                for p in cat_prompts:
+                    p["category"] = new_name
+        else:
+            print(f"  ✗ Category '{cat_name}' rejected — tweets will use 'other'.")
+            for p in cat_prompts:
+                p["category"] = "other"
+
+    return prompts
 
 
 def extract_prompts(
@@ -111,104 +230,162 @@ def extract_prompts(
     api_key: Optional[str],
     model: str,
     concurrency: int = DEFAULT_CONCURRENCY,
+    scrape_id: int = None,
 ) -> list[dict]:
-    tweets = load_tweets(input_path)
-    total = len(tweets)
-    print(f"Loaded {total} tweets from {input_path}")
-    print(f"Concurrency: {concurrency}")
+    init_db()
 
+    # Check pending suggestions first
+    pending = get_pending_suggestions()
+    if pending:
+        print(f"\n⚠️  {len(pending)} pending category suggestion(s) in DB:")
+        for s in pending:
+            print(f"  [{s['id']}] '{s['suggested_name']}' — {s['reason'][:80]}...")
+        print("\nReview them before continuing? [y] to review, [Enter] to skip:")
+        if input("> ").strip().lower() == "y":
+            for s in pending:
+                print(f"\nSuggestion: '{s['suggested_name']}'")
+                print(f"  Reason: {s['reason']}")
+                print(f"  Prompt: {s['prompt_text'][:100]}...")
+                print(f"  [a]pprove  [r]eject  [s]kip")
+                c = input("> ").strip().lower()
+                if c == "a":
+                    approve_suggestion(s["id"])
+                    print("  ✓ Approved")
+                elif c == "r":
+                    reject_suggestion(s["id"])
+                    print("  ✗ Rejected")
+                else:
+                    print("  Skipped")
+            print()
+
+    # Load tweets from DB or JSON file
+    if input_path and input_path.exists():
+        with open(input_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        tweets = data.get("tweets", [])
+    else:
+        tweets = get_recent_tweets(limit=500)
+        if scrape_id is not None:
+            from scripts.db import get_tweets_for_scrape
+            tweets = get_tweets_for_scrape(scrape_id)
+
+    total = len(tweets)
+    print(f"Loaded {total} tweets for processing")
     if not tweets:
-        _save_output(output_path, [], [], model)
         return []
 
     api_base = api_base or os.environ.get("OPENAI_API_BASE", "https://api.minimaxi.com/v1")
     api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
     if not api_key:
-        print("ERROR: OPENAI_API_KEY not set. Create a .env file from .env.example and add your API key.")
+        print("ERROR: OPENAI_API_KEY not set. Create .env from .env.example.")
         sys.exit(1)
+
+    categories = get_categories()
+    known_cat_names = {c["name"] for c in categories}
+    system_prompt = build_system_prompt(categories)
+    print(f"Active categories: {list(known_cat_names)}")
+    print(f"Concurrency: {concurrency}")
 
     prompts = []
     done = 0
     lock = Lock()
+    suggestion_lock = Lock()
 
-    def on_result(wid: int, tweet: dict, result_tuple: tuple):
+    def on_result(wid, tweet, result_tuple):
         nonlocal done, prompts
-        prompt_dict, was_extracted = result_tuple
+        prompt_dict, was_extracted, _ = result_tuple
         with lock:
             done += 1
-            print(f"[{done}/{total}] {tweet.get('author', {}).get('screen_name', '?')} -> {'EXTRACTED' if was_extracted else 'skipped'}")
+            screen = tweet.get("author_screen", "?")
             if was_extracted:
+                print(f"[{done}/{total}] @{screen} EXTRACTED [{prompt_dict['category']}] {prompt_dict['title']}")
                 prompts.append(prompt_dict)
+            else:
+                print(f"[{done}/{total}] @{screen} skipped")
 
     with ThreadPoolExecutor(max_workers=concurrency) as ex:
         futures = {}
         for i, tweet in enumerate(tweets):
-            screen = tweet.get("author", {}).get("screen_name", "?")
+            screen = tweet.get("author_screen", "?")
             print(f"  Queuing [{i+1}/{total}] @{screen}...")
-            fut = ex.submit(process_tweet, tweet, api_base, api_key, model)
+            fut = ex.submit(
+                process_tweet, tweet, api_base, api_key, model, system_prompt
+            )
             futures[fut] = (i, tweet)
 
         for fut in as_completed(futures):
             i, tweet = futures[fut]
             try:
                 result_tuple = fut.result()
-            except Exception as e:
+            except Exception:
                 result_tuple = (None, False)
             on_result(i, tweet, result_tuple)
 
+    # Check for new categories and handle them
+    prompts = handle_new_categories(prompts, known_cat_names, api_key, api_base, model)
+
+    # Save to DB
+    db_scrape_id = scrape_id if scrape_id else 1  # default scrape if none
+    insert_prompts(db_scrape_id, prompts)
+
     print(f"\nExtracted {len(prompts)} prompts from {total} tweets")
-    _save_output(output_path, prompts, tweets, model)
+
+    # Save JSON export
+    if output_path:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        cats = {}
+        for p in prompts:
+            cats[p["category"]] = cats.get(p["category"], 0) + 1
+        export = {
+            "extract_time": datetime.now(timezone.utc).isoformat(),
+            "llm_model": model,
+            "concurrency": concurrency,
+            "total_input": total,
+            "total_extracted": len(prompts),
+            "categories": cats,
+            "prompts": prompts,
+        }
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(export, f, ensure_ascii=False, indent=2)
+        print(f"JSON export saved to {output_path}")
+
     return prompts
-
-
-def _save_output(output_path: Path, prompts: list[dict], tweets: list[dict], model: str):
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    data = {
-        "extract_time":    datetime.now(timezone.utc).isoformat(),
-        "llm_model":       model,
-        "concurrency":     DEFAULT_CONCURRENCY,
-        "total_input":     len(tweets),
-        "total_extracted": len(prompts),
-        "prompts":         prompts,
-    }
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    print(f"Saved to {output_path}")
 
 
 # ─── CLI ───────────────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(description="Extract generation Prompts from scraped tweets via LLM (concurrent)")
-    parser.add_argument("--input",       type=str, default=str(DEFAULT_INPUT),
-                        help="Input JSON from x_multi_search.py")
-    parser.add_argument("--output",      type=str, default=str(DEFAULT_OUTPUT),
-                        help="Output JSON with extracted prompts")
-    parser.add_argument("--api-base",    type=str, default=None,
+    parser = argparse.ArgumentParser(
+        description="Extract prompts from DB tweets via LLM (concurrent, with Category management)"
+    )
+    parser.add_argument("--input",      type=str, default=None,
+                        help="Input JSON (legacy, use --scrape-id for DB mode)")
+    parser.add_argument("--scrape-id",  type=int, default=None,
+                        help="Process tweets from a specific scrape ID in DB")
+    parser.add_argument("--output",     type=str, default=str(DEFAULT_OUTPUT),
+                        help="Output JSON path")
+    parser.add_argument("--api-base",   type=str, default=None,
                         help="API base URL (or OPENAI_API_BASE env var)")
-    parser.add_argument("--api-key",     type=str, default=None,
+    parser.add_argument("--api-key",    type=str, default=None,
                         help="API key (or OPENAI_API_KEY env var)")
-    parser.add_argument("--model",        type=str, default=DEFAULT_MODEL,
+    parser.add_argument("--model",       type=str, default=DEFAULT_MODEL,
                         help=f"LLM model (default: {DEFAULT_MODEL})")
-    parser.add_argument("--concurrency",  type=int, default=DEFAULT_CONCURRENCY,
-                        help=f"Number of parallel LLM calls (default: {DEFAULT_CONCURRENCY})")
+    parser.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY,
+                        help=f"Parallel LLM calls (default: {DEFAULT_CONCURRENCY})")
     args = parser.parse_args()
 
-    input_path = Path(args.input)
+    input_path = Path(args.input) if args.input else None
     output_path = Path(args.output)
 
-    if not input_path.exists():
-        print(f"ERROR: Input file not found: {input_path}")
-        sys.exit(1)
-
     print("=" * 60)
-    print("Prompt Extraction via LLM (Concurrent)")
+    print("Prompt Extraction via LLM (Concurrent + Category Management)")
     print("=" * 60)
-    print(f"  Input:       {input_path}")
-    print(f"  Output:      {output_path}")
-    print(f"  Model:       {args.model}")
+    print(f"  Input:       {input_path or 'from DB (recent tweets)'}")
+    print(f"  Scrape ID:  {args.scrape_id or 'most recent'}")
+    print(f"  Output:     {output_path}")
+    print(f"  Model:      {args.model}")
     print(f"  Concurrency: {args.concurrency}")
-    print(f"  API:         {args.api_base or 'from env'}")
+    print(f"  API:        {args.api_base or 'from env'}")
     print("=" * 60 + "\n")
 
     extract_prompts(
@@ -218,6 +395,7 @@ def main():
         api_key=args.api_key,
         model=args.model,
         concurrency=args.concurrency,
+        scrape_id=args.scrape_id,
     )
 
 
