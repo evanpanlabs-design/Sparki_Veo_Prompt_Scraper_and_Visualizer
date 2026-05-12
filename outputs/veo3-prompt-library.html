@@ -19,6 +19,10 @@
             --border-strong: #d4d4d4;
             --accent: #0a0a0a;
             --tag-bg: #f0f0f0;
+            --mondrian-red: #D40920;
+            --mondrian-yellow: #F7D842;
+            --mondrian-blue: #1356A2;
+            --spark-yellow: #FFE135;
         }
 
         * {
@@ -81,7 +85,22 @@
         .hero {
             padding: 80px 48px 60px;
             text-align: center;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 3px solid var(--text-primary);
+            background: repeating-linear-gradient(
+                -45deg,
+                transparent,
+                transparent 20px,
+                rgba(212, 9, 32, 0.03) 20px,
+                rgba(212, 9, 32, 0.03) 21px,
+                transparent 21px,
+                transparent 40px,
+                rgba(247, 216, 66, 0.03) 40px,
+                rgba(247, 216, 66, 0.03) 41px,
+                transparent 41px,
+                transparent 60px,
+                rgba(19, 86, 162, 0.03) 60px,
+                rgba(19, 86, 162, 0.03) 61px
+            );
         }
 
         .hero h1 {
@@ -91,13 +110,12 @@
             margin-bottom: 16px;
         }
 
-        .hero h1 span {
-            display: block;
-            font-size: 16px;
-            font-weight: 400;
-            color: var(--text-tertiary);
-            letter-spacing: 0;
-            margin-top: 8px;
+        .hero h1::before {
+            content: '⚡ ';
+        }
+
+        .hero h1 span::before {
+            content: '✨ ';
         }
 
         .hero p {
@@ -242,17 +260,35 @@
 
         /* Prompt Card */
         .prompt-card {
-            border: 1px solid var(--border);
-            border-radius: 12px;
+            border: 2px solid var(--text-primary);
+            border-radius: 4px;
             overflow: hidden;
             transition: all 0.2s;
             background: white;
+            position: relative;
+        }
+
+        .prompt-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: repeating-linear-gradient(
+                90deg,
+                var(--mondrian-red) 0px,
+                var(--mondrian-red) 12px,
+                var(--mondrian-yellow) 12px,
+                var(--mondrian-yellow) 24px,
+                var(--mondrian-blue) 24px,
+                var(--mondrian-blue) 36px
+            );
         }
 
         .prompt-card:hover {
-            border-color: var(--border-strong);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.06);
-            transform: translateY(-2px);
+            transform: translateY(-4px) rotate(-0.5deg);
+            box-shadow: 6px 6px 0 var(--text-primary);
         }
 
         .card-header {
@@ -301,8 +337,22 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
             padding: 4px 10px;
-            background: var(--tag-bg);
             border-radius: 4px;
+            color: white;
+        }
+
+        .prompt-category[data-category="video-generation"] {
+            background: var(--mondrian-blue);
+        }
+
+        .prompt-category[data-category="product-photography"] {
+            background: var(--mondrian-red);
+        }
+
+        .prompt-category[data-category="cinematic"] {
+            background: var(--mondrian-yellow);
+            color: var(--text-primary);
+        }
             margin-bottom: 12px;
         }
 
@@ -390,13 +440,15 @@
         }
 
         .btn-primary {
-            background: var(--accent);
-            border: 1px solid var(--accent);
-            color: white;
+            background: var(--spark-yellow);
+            border: 2px solid var(--text-primary);
+            color: var(--text-primary);
+            font-weight: 700;
         }
 
         .btn-primary:hover {
-            background: #1a1a1a;
+            background: var(--text-primary);
+            color: var(--spark-yellow);
         }
 
         /* Modal */
@@ -805,7 +857,7 @@
             </div>
             <div class="modal-footer">
                 <a href="#" id="modal-view-original" target="_blank" class="btn btn-outline">View on X</a>
-                <a href="#" class="btn btn-primary" onclick="copyPrompt()">Copy Prompt</a>
+                <a href="https://sparki.io/create" target="_blank" class="btn btn-primary" onclick="navigator.clipboard.writeText('${prompt.prompt_text.replace(/'/g, "\\'")}')">Try ⚡</a>
             </div>
         </div>
     </div>
@@ -960,7 +1012,7 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <span class="prompt-category">${prompt.category.replace('-', ' ')}</span>
+                        <span class="prompt-category" data-category="${prompt.category}">${prompt.category.replace('-', ' ')}</span>
                         <h3 class="prompt-title">${prompt.title}</h3>
                         <p class="prompt-preview">${prompt.prompt_text}</p>
                         <button class="view-more-btn" onclick="openModal('${prompt.tweet_id}')">View Full Prompt</button>
@@ -984,7 +1036,7 @@
                     </div>
                     <div class="card-footer">
                         <a href="${prompt.url}" target="_blank" class="btn btn-outline">View on X</a>
-                        <a href="#" class="btn btn-primary" onclick="copyPrompt()">Copy Prompt</a>
+                        <a href="https://sparki.io/create" target="_blank" class="btn btn-primary" onclick="navigator.clipboard.writeText('${prompt.prompt_text.replace(/'/g, "\\'")}')">Try ⚡</a>
                     </div>
                 </article>
             `;
