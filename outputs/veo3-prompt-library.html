@@ -699,9 +699,9 @@
             <div class="filter-section">
                 <div class="filter-title">Sort By</div>
                 <ul class="filter-list">
-                    <li><button class="active">Most Recent</button></li>
-                    <li><button>Most Popular</button></li>
-                    <li><button>Longest Prompt</button></li>
+                    <li><button class="active" onclick="document.querySelector('.sort-select').value='recent';handleSort()">Most Recent</button></li>
+                    <li><button onclick="document.querySelector('.sort-select').value='popular';handleSort()">Most Popular</button></li>
+                    <li><button onclick="document.querySelector('.sort-select').value='longest';handleSort()">Longest Prompt</button></li>
                 </ul>
             </div>
         </aside>
@@ -709,11 +709,14 @@
         <section class="content">
             <div class="content-header">
                 <h2 class="content-title" id="content-title">All Prompts</h2>
-                <select class="sort-select">
-                    <option>Most Recent</option>
-                    <option>Most Popular</option>
-                    <option>Longest Prompt</option>
-                </select>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <input type="text" id="search-input" placeholder="Search prompts..." oninput="handleSearch()" style="padding: 8px 14px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; width: 200px;">
+                    <select class="sort-select" onchange="handleSort(this.value)">
+                        <option value="recent">Most Recent</option>
+                        <option value="popular">Most Popular</option>
+                        <option value="longest">Longest Prompt</option>
+                    </select>
+                </div>
             </div>
             <div class="prompt-grid" id="prompt-grid">
                 <!-- Cards will be injected by JS -->
@@ -959,12 +962,41 @@
         function renderPrompts(filter = 'all') {
             const grid = document.getElementById('prompt-grid');
             const title = document.getElementById('content-title');
-            const filtered = filter === 'all'
-                ? prompts
+            const searchTerm = (document.getElementById('search-input')?.value || '').toLowerCase();
+            const sortValue = document.querySelector('.sort-select')?.value || 'recent';
+
+            let filtered = filter === 'all'
+                ? [...prompts]
                 : prompts.filter(p => p.category === filter);
 
-            title.textContent = filter === 'all' ? 'All Prompts' : filter.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
-            grid.innerHTML = filtered.map(createPromptCard).join('');
+            if (searchTerm) {
+                filtered = filtered.filter(p =>
+                    p.title.toLowerCase().includes(searchTerm) ||
+                    p.prompt_text.toLowerCase().includes(searchTerm) ||
+                    p.author.name.toLowerCase().includes(searchTerm) ||
+                    (p.notes && p.notes.toLowerCase().includes(searchTerm))
+                );
+            }
+
+            if (sortValue === 'popular') {
+                filtered.sort((a, b) => (b.engagement.likes + b.engagement.retweets + b.engagement.replies) - (a.engagement.likes + a.engagement.retweets + a.engagement.replies));
+            } else if (sortValue === 'longest') {
+                filtered.sort((a, b) => b.prompt_text.length - a.prompt_text.length);
+            }
+
+            const label = filter === 'all' ? 'All Prompts' : filter.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
+            title.textContent = searchTerm ? `Search: "${searchTerm}" (${filtered.length})` : label;
+            grid.innerHTML = filtered.length
+                ? filtered.map(createPromptCard).join('')
+                : '<div class="empty-state"><h3>No prompts found</h3><p>Try a different search term</p></div>';
+        }
+
+        function handleSearch() {
+            renderPrompts(document.querySelector('#category-filters .active')?.dataset.category || 'all');
+        }
+
+        function handleSort() {
+            renderPrompts(document.querySelector('#category-filters .active')?.dataset.category || 'all');
         }
 
         function openModal(tweetId) {
