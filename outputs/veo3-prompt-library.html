@@ -111,11 +111,19 @@
         }
 
         .hero h1::before {
-            content: '⚡ ';
+            content: '';
         }
 
         .hero h1 span::before {
-            content: '✨ ';
+            content: '';
+        }
+
+        #typing-title {
+            font-size: 42px;
+            font-weight: 700;
+            letter-spacing: -1.5px;
+            margin-bottom: 16px;
+            min-height: 52px;
         }
 
         .hero p {
@@ -260,35 +268,59 @@
 
         /* Prompt Card */
         .prompt-card {
-            border: 2px solid var(--text-primary);
+            border: 4px solid var(--text-primary);
             border-radius: 4px;
-            overflow: hidden;
             transition: all 0.2s;
             background: white;
             position: relative;
         }
 
-        .prompt-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 6px;
-            background: repeating-linear-gradient(
-                90deg,
-                var(--mondrian-red) 0px,
-                var(--mondrian-red) 12px,
-                var(--mondrian-yellow) 12px,
-                var(--mondrian-yellow) 24px,
-                var(--mondrian-blue) 24px,
-                var(--mondrian-blue) 36px
-            );
-        }
-
         .prompt-card:hover {
             transform: translateY(-4px) rotate(-0.5deg);
             box-shadow: 6px 6px 0 var(--text-primary);
+        }
+
+        .card-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            font-family: 'Arial Black', sans-serif;
+            font-size: 10px;
+            font-weight: 900;
+            padding: 4px 10px;
+            color: white;
+            transform: rotate(3deg);
+            animation: wiggle 2s ease-in-out infinite;
+            z-index: 10;
+        }
+
+        .card-badge.red { background: var(--mondrian-red); }
+        .card-badge.yellow { background: var(--mondrian-yellow); color: var(--text-primary); }
+        .card-badge.blue { background: var(--mondrian-blue); }
+
+        .prompt-card.border-red { border-color: var(--mondrian-red); }
+        .prompt-card.border-yellow { border-color: var(--mondrian-yellow); }
+        .prompt-card.border-blue { border-color: var(--mondrian-blue); }
+
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(3deg); }
+            25% { transform: rotate(-2deg) scale(1.05); }
+            75% { transform: rotate(5deg); }
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        .typing-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            background: var(--text-primary);
+            margin-left: 2px;
+            animation: blink 1s step-end infinite;
+            vertical-align: text-bottom;
         }
 
         .card-header {
@@ -440,15 +472,15 @@
         }
 
         .btn-primary {
-            background: var(--spark-yellow);
+            background: var(--mondrian-red);
             border: 2px solid var(--text-primary);
-            color: var(--text-primary);
+            color: white;
             font-weight: 700;
         }
 
         .btn-primary:hover {
             background: var(--text-primary);
-            color: var(--spark-yellow);
+            color: white;
         }
 
         /* Modal */
@@ -732,7 +764,7 @@
     </nav>
 
     <header class="hero">
-        <h1>Veo3 Prompt Library <span>Curated video generation prompts from the community</span></h1>
+        <h1><div id="typing-title"></div></h1>
         <p>A collection of proven prompts for Google Veo 3, scraped from creators and organized for easy discovery.</p>
         <div class="stats">
             <div class="stat">
@@ -1001,9 +1033,16 @@
         }
 
         function createPromptCard(prompt) {
-            const total = prompt.engagement.likes + prompt.engagement.retweets + prompt.engagement.replies;
+            const colors = ['red', 'yellow', 'blue'];
+            const badges = ['Hot!', 'Selected', 'Handpicked'];
+            const borderColor = colors[Math.floor(Math.random() * colors.length)];
+            const showBadge = Math.random() > 0.5;
+            const badge = badges[Math.floor(Math.random() * badges.length)];
+            const badgeColor = colors[Math.floor(Math.random() * colors.length)];
+            const badgeDelay = (Math.random() * 2).toFixed(1);
             return `
-                <article class="prompt-card">
+                <article class="prompt-card border-${borderColor}">
+                    ${showBadge ? `<div class="card-badge ${badgeColor}" style="animation-delay: ${badgeDelay}s">${badge}</div>` : ''}
                     <div class="card-header">
                         <div class="author-avatar">${prompt.author.name[0]}</div>
                         <div class="author-info">
@@ -1142,6 +1181,37 @@
 
         // Initial render
         renderPrompts();
+
+        // Typing animation
+        const titleEl = document.getElementById('typing-title');
+        const words = ['⚡ Veo3 Prompt Library', '✨ Handpicked Video Prompts', '🔥 Best Veo3 Prompts'];
+        let wordIndex = 0;
+        let charIndex = 0;
+        let isDeleting = false;
+        let cursorVisible = true;
+
+        function typeEffect() {
+            const current = words[wordIndex];
+            if (isDeleting) {
+                charIndex--;
+                titleEl.innerHTML = current.substring(0, charIndex) + '<span class="typing-cursor"></span>';
+            } else {
+                charIndex++;
+                titleEl.innerHTML = current.substring(0, charIndex) + '<span class="typing-cursor"></span>';
+            }
+
+            let speed = isDeleting ? 30 : 60;
+            if (!isDeleting && charIndex === current.length) {
+                speed = 2000;
+                isDeleting = true;
+            } else if (isDeleting && charIndex === 0) {
+                isDeleting = false;
+                wordIndex = (wordIndex + 1) % words.length;
+                speed = 300;
+            }
+            setTimeout(typeEffect, speed);
+        }
+        typeEffect();
     </script>
 </body>
 </html>
