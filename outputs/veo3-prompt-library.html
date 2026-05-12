@@ -511,15 +511,15 @@
         }
 
         .btn-outline {
-            background: var(--mondrian-yellow);
+            background: var(--text-primary);
             border: 2px solid var(--text-primary);
-            color: var(--text-primary);
+            color: white;
             font-weight: 600;
         }
 
         .btn-outline:hover {
-            background: var(--text-primary);
-            color: var(--mondrian-yellow);
+            background: white;
+            color: var(--text-primary);
         }
 
         .btn-outline:hover {
@@ -533,6 +533,10 @@
             color: white;
             font-weight: 700;
         }
+
+        .btn-primary.btn-red { background: var(--mondrian-red); color: white; }
+        .btn-primary.btn-yellow { background: var(--mondrian-yellow); color: var(--text-primary); }
+        .btn-primary.btn-blue { background: var(--mondrian-blue); color: white; }
 
         .btn-primary:hover {
             background: var(--text-primary);
@@ -945,7 +949,7 @@
             </div>
             <div class="modal-footer">
                 <a href="#" id="modal-view-original" target="_blank" class="btn btn-outline">View on X</a>
-                <a href="https://sparki.io/create" target="_blank" class="btn btn-primary" onclick="navigator.clipboard.writeText('${prompt.prompt_text.replace(/'/g, "\\'")}')">Try ⚡</a>
+                <a href="https://sparki.io/create" target="_blank" class="btn btn-primary" onclick="navigator.clipboard.writeText(window.currentPromptText||'')">Try ⚡</a>
             </div>
         </div>
     </div>
@@ -1096,6 +1100,7 @@
             const badge = badges[Math.floor(Math.random() * badges.length)];
             const badgeColor = colors[Math.floor(Math.random() * colors.length)];
             const badgeDelay = (Math.random() * 2).toFixed(1);
+            const btnColor = colors[Math.floor(Math.random() * colors.length)];
             return `
                 <article class="prompt-card border-${borderColor}">
                     ${showBadge ? `<div class="card-badge ${badgeColor}" style="animation-delay: ${badgeDelay}s">${badge}</div>` : ''}
@@ -1131,7 +1136,7 @@
                     </div>
                     <div class="card-footer">
                         <a href="${prompt.url}" target="_blank" class="btn btn-outline">View on X</a>
-                        <a href="https://sparki.io/create" target="_blank" class="btn btn-primary" onclick="navigator.clipboard.writeText('${prompt.prompt_text.replace(/'/g, "\\'")}')">Try ⚡</a>
+                        <a href="https://sparki.io/create" target="_blank" class="btn btn-primary btn-${btnColor}" onclick="navigator.clipboard.writeText('${prompt.prompt_text.replace(/'/g, "\\'")}')">Try ⚡</a>
                     </div>
                 </article>
             `;
@@ -1181,6 +1186,11 @@
             const prompt = prompts.find(p => p.tweet_id === tweetId);
             if (!prompt) return;
             window.currentPromptText = prompt.prompt_text;
+
+            const colors = ['red', 'yellow', 'blue'];
+            const btnColor = colors[Math.floor(Math.random() * colors.length)];
+            const btn = document.querySelector('.modal-footer .btn-primary');
+            btn.className = 'btn btn-primary btn-' + btnColor;
 
             document.getElementById('modal-avatar').textContent = prompt.author.name[0];
             document.getElementById('modal-author-name').textContent = prompt.author.name;
