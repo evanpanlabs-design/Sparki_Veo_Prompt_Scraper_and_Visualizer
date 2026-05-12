@@ -24,6 +24,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from io import BytesIO
 from threading import Lock
+from PIL import Image
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -76,33 +77,19 @@ STYLE_KEYWORDS = {
     ],
 }
 
-ASPECT_RATIOS = {
-    "cinematic": "21:9",
-    "character-design": "2:3",
-    "product-photography": "3:2",
-    "image-generation": "1:1",
-    "video-generation": "16:9",
-    "other": "16:9",
-}
-
-# Fixed output resolution: 2752 x 1536 (16:9 widescreen)
-OUTPUT_WIDTH = 2752
-OUTPUT_HEIGHT = 1536
-
 
 def build_image_prompt(prompt_text: str, category: str, title: str) -> str:
     """Build a cover-image prompt with category style keywords."""
     style_kws = STYLE_KEYWORDS.get(category, STYLE_KEYWORDS["other"])
-    # pick 3 random style keywords to avoid repetition
     import random
     selected = random.sample(style_kws, min(3, len(style_kws)))
     style_str = ", ".join(selected)
-    aspect = ASPECT_RATIOS.get(category, "16:9")
 
     return (
         f"Generate a cover image for the following AI generation prompt. "
         f"The cover should visually represent this prompt in a compelling, marketable way.\n\n"
-        f"Output dimensions: {OUTPUT_WIDTH}x{OUTPUT_HEIGHT} pixels (aspect ratio {aspect}).\n"
+        f"IMPORTANT: Center the main subject/content in the middle of the image. "
+        f"Do NOT place important elements near the top or bottom edges.\n"
         f"Style keywords: {style_str}\n\n"
         f"Prompt title: {title}\n"
         f"Prompt text: {prompt_text}"
@@ -170,20 +157,16 @@ def generate_cover_image(
     for part in response.candidates[0].content.parts:
         if part.inline_data:
             image_data = part.inline_data.data
-            mime_type = part.inline_data.mime_type
             break
 
     if image_data is None:
         print(f"  [!] No image in response for prompt_id={prompt_id}")
         return prompt_id, ""
 
-    # Save locally
+    # Save locally — save Gemini's native output as-is
     filename = f"{prompt_id}.png"
     local_path = local_dir / filename
-    from PIL import Image
-    img = Image.open(BytesIO(image_data))
-    # Resize to exact output dimensions 2752x1536
-    img = img.resize((OUTPUT_WIDTH, OUTPUT_HEIGHT), Image.LANCZOS)
+    img = Image.open(BytesIO(image_data)).convert("RGB")
     img.save(local_path, format="PNG")
 
     if local_only:
