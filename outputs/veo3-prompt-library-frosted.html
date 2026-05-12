@@ -3,27 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Veo3 Prompt Library — Sparki</title>
+    <title>Veo3 Prompt Library — Sparki (Frosted Glass)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-primary: #ffffff;
-            --bg-secondary: #f0fdff;
-            --bg-tertiary: #e6f7ff;
+            --bg-primary: rgba(255, 255, 255, 0.85);
+            --bg-secondary: rgba(240, 253, 255, 0.7);
+            --bg-glass: rgba(255, 255, 255, 0.6);
             --text-primary: #0a0a0a;
             --text-secondary: #404040;
             --text-tertiary: #737373;
-            --border: #d0e8ff;
-            --border-strong: #a5d4ff;
+            --border: rgba(200, 200, 200, 0.5);
             --accent: #3B82F6;
-            --accent-light: #A5FFFF;
+            --accent-light: rgba(165, 255, 255, 0.4);
             --accent-glow: rgba(59, 130, 246, 0.15);
-            --pink: #ffc0cb;
-            --pink-light: #fff0f3;
-            --yellow-light: #fffce8;
-            --tag-bg: #e6f7ff;
+            --pink: rgba(244, 114, 182, 0.4);
+            --yellow: rgba(251, 191, 36, 0.4);
         }
 
         * {
@@ -34,10 +31,49 @@
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg-primary);
+            background: linear-gradient(135deg, #a5ffff 0%, #e6f7ff 30%, #fff0f3 60%, #fff8e6 100%);
+            background-attachment: fixed;
             color: var(--text-primary);
             line-height: 1.6;
             -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+        }
+
+        /* Background decorative blobs */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(165, 255, 255, 0.5) 0%, transparent 40%),
+                radial-gradient(ellipse at 80% 30%, rgba(244, 114, 182, 0.3) 0%, transparent 35%),
+                radial-gradient(ellipse at 40% 70%, rgba(59, 130, 246, 0.25) 0%, transparent 40%),
+                radial-gradient(ellipse at 90% 80%, rgba(251, 191, 36, 0.3) 0%, transparent 30%);
+            animation: blobFloat 20s ease-in-out infinite;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        @keyframes blobFloat {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(2%, 3%) rotate(2deg); }
+            66% { transform: translate(-2%, -1%) rotate(-1deg); }
+        }
+
+        /* Glassmorphism card */
+        .glass-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 16px;
+            box-shadow:
+                0 8px 32px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.05);
         }
 
         /* Navigation */
@@ -46,11 +82,8 @@
             justify-content: space-between;
             align-items: center;
             padding: 20px 48px;
-            border-bottom: 1px solid var(--border);
             position: sticky;
             top: 0;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(8px);
             z-index: 100;
         }
 
@@ -75,49 +108,17 @@
         }
 
         .nav-links a:hover {
-            color: var(--text-primary);
+            color: var(--accent);
         }
 
         .nav-links a.active {
-            color: var(--text-primary);
+            color: var(--accent);
         }
 
         /* Hero */
         .hero {
             padding: 80px 48px 60px;
             text-align: center;
-            border-bottom: 2px solid var(--text-primary);
-            background: linear-gradient(-45deg,
-                #e6f7ff 0%,
-                #fff0f3 20%,
-                #fff8e6 40%,
-                #f0f8ff 60%,
-                #e6f7ff 80%,
-                #fff0f3 100%
-            );
-            background-size: 300% 300%;
-            animation: gradientFlow 8s ease infinite;
-        }
-
-        @keyframes gradientFlow {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        .hero h1 {
-            font-size: 42px;
-            font-weight: 700;
-            letter-spacing: -1.5px;
-            margin-bottom: 16px;
-        }
-
-        .hero h1::before {
-            content: '';
-        }
-
-        .hero h1 span::before {
-            content: '';
         }
 
         #typing-title {
@@ -198,50 +199,21 @@
         .filter-list button {
             width: 100%;
             text-align: left;
-            padding: 10px 14px 10px 32px;
+            padding: 10px 14px;
             border: none;
             background: transparent;
             font-size: 14px;
             color: var(--text-secondary);
             cursor: pointer;
-            border-radius: 6px;
+            border-radius: 8px;
             transition: all 0.15s;
             display: flex;
             justify-content: space-between;
-            position: relative;
-        }
-
-        .filter-list button::before {
-            content: '';
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: var(--accent);
-            border: 2px solid var(--border-strong);
-        }
-
-        .filter-list button[data-category="video-generation"]::before { background: var(--accent); }
-        .filter-list button[data-category="product-photography"]::before { background: #f472b6; }
-        .filter-list button[data-category="cinematic"]::before { background: #fbbf24; border-color: #f59e0b; }
-
-        .filter-list button:hover {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-        }
-
-        .filter-list button.active {
-            background: var(--accent);
-            color: white;
-        }
             align-items: center;
         }
 
         .filter-list button:hover {
-            background: var(--bg-tertiary);
+            background: var(--bg-glass);
             color: var(--text-primary);
         }
 
@@ -253,13 +225,13 @@
         .filter-count {
             font-size: 12px;
             color: var(--text-tertiary);
-            background: var(--bg-tertiary);
+            background: rgba(255, 255, 255, 0.5);
             padding: 2px 8px;
             border-radius: 10px;
         }
 
         .filter-list button.active .filter-count {
-            background: rgba(255,255,255,0.15);
+            background: rgba(255, 255, 255, 0.2);
             color: white;
         }
 
@@ -286,7 +258,8 @@
             border: 1px solid var(--border);
             border-radius: 6px;
             font-size: 14px;
-            background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23737373' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;
+            background: var(--bg-glass);
+            backdrop-filter: blur(10px);
             appearance: none;
             cursor: pointer;
         }
@@ -300,23 +273,21 @@
 
         /* Prompt Card */
         .prompt-card {
-            border: 1px solid #808080;
-            border-radius: 12px;
             overflow: hidden;
-            transition: all 0.25s ease;
-            background: white;
+            transition: all 0.3s ease;
         }
 
         .prompt-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            transform: translateY(-4px) scale(1.01);
+            box-shadow:
+                0 20px 60px rgba(59, 130, 246, 0.2),
+                0 8px 24px rgba(0, 0, 0, 0.1);
         }
 
         .card-image {
             width: 100%;
             aspect-ratio: 2752 / 1536;
             overflow: hidden;
-            background: var(--bg-tertiary);
         }
 
         .card-image img {
@@ -328,31 +299,6 @@
 
         .prompt-card:hover .card-image img {
             transform: scale(1.03);
-        }
-
-        .card-badge {
-            display: none;
-        }
-
-        @keyframes wiggle {
-            0%, 100% { transform: rotate(3deg); }
-            25% { transform: rotate(-2deg) scale(1.05); }
-            75% { transform: rotate(5deg); }
-        }
-
-        @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0; }
-        }
-
-        .typing-cursor {
-            display: inline-block;
-            width: 2px;
-            height: 1em;
-            background: var(--text-primary);
-            margin-left: 2px;
-            animation: blink 1s step-end infinite;
-            vertical-align: text-bottom;
         }
 
         .card-header {
@@ -367,7 +313,7 @@
             width: 36px;
             height: 36px;
             border-radius: 50%;
-            background: var(--bg-tertiary);
+            background: linear-gradient(135deg, var(--accent-light), var(--pink));
             display: flex;
             align-items: center;
             justify-content: center;
@@ -418,13 +364,11 @@
             background: #fbbf24;
             color: var(--text-primary);
         }
-            margin-bottom: 12px;
-        }
 
         .prompt-title {
             font-size: 16px;
             font-weight: 600;
-            margin-bottom: 10px;
+            margin: 12px 0 10px;
             line-height: 1.4;
         }
 
@@ -460,7 +404,7 @@
             padding: 8px;
             margin-top: 8px;
             border: 1px solid var(--border);
-            background: white;
+            background: var(--bg-glass);
             font-size: 12px;
             font-weight: 500;
             color: var(--text-secondary);
@@ -470,13 +414,12 @@
         }
 
         .view-more-btn:hover {
-            border-color: var(--border-strong);
+            background: rgba(255, 255, 255, 0.8);
             color: var(--text-primary);
         }
 
         .card-footer {
             padding: 16px 20px;
-            background: white;
             display: flex;
             gap: 10px;
         }
@@ -493,32 +436,40 @@
             text-decoration: none;
         }
 
-        #search-input:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px var(--accent-glow);
+        #search-input {
+            padding: 8px 14px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            width: 200px;
+            background: var(--bg-glass);
+            backdrop-filter: blur(10px);
+            transition: all 0.2s;
             outline: none;
         }
 
+        #search-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
         .btn-outline {
-            background: white;
-            border: 2px solid var(--border);
+            background: var(--bg-glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
             color: var(--text-primary);
             font-weight: 500;
         }
 
         .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.9);
             border-color: var(--accent);
             color: var(--accent);
         }
 
-        .btn-outline:hover {
-            border-color: var(--border-strong);
-            background: var(--bg-secondary);
-        }
-
         .btn-primary {
             background: var(--accent);
-            border: 2px solid var(--accent);
+            border: 1px solid var(--accent);
             color: white;
             font-weight: 600;
         }
@@ -529,13 +480,29 @@
             color: white;
         }
 
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        .typing-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            background: var(--text-primary);
+            margin-left: 2px;
+            animation: blink 1s step-end infinite;
+            vertical-align: text-bottom;
+        }
+
         /* Modal */
         .modal-overlay {
             visibility: hidden;
             opacity: 0;
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
             z-index: 1000;
             display: flex;
             align-items: center;
@@ -550,27 +517,18 @@
         }
 
         .modal {
-            background: white;
-            border-radius: 16px;
             max-width: 680px;
             width: 100%;
             max-height: 85vh;
-            overflow-x: hidden;
             overflow-y: auto;
-            scrollbar-gutter: stable;
-            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.2);
         }
 
         .modal::-webkit-scrollbar {
             width: 6px;
         }
 
-        .modal::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
         .modal::-webkit-scrollbar-thumb {
-            background: var(--border-strong);
+            background: rgba(0, 0, 0, 0.2);
             border-radius: 3px;
         }
 
@@ -608,7 +566,7 @@
             height: 36px;
             border-radius: 50%;
             border: 1px solid var(--border);
-            background: white;
+            background: var(--bg-glass);
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -618,7 +576,7 @@
         }
 
         .modal-close:hover {
-            background: var(--bg-tertiary);
+            background: rgba(255, 255, 255, 0.9);
         }
 
         .modal-category {
@@ -627,7 +585,7 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            background: var(--tag-bg);
+            background: var(--bg-glass);
             border-radius: 4px;
         }
 
@@ -658,7 +616,8 @@
             line-height: 1.7;
             color: var(--text-secondary);
             white-space: pre-wrap;
-            background: var(--bg-secondary);
+            background: var(--bg-glass);
+            backdrop-filter: blur(10px);
             padding: 20px;
             border-radius: 8px;
             border: 1px solid var(--border);
@@ -674,7 +633,8 @@
             display: flex;
             gap: 24px;
             padding: 16px 28px;
-            background: var(--bg-secondary);
+            background: var(--bg-glass);
+            backdrop-filter: blur(10px);
             border-top: 1px solid var(--border);
         }
 
@@ -725,26 +685,12 @@
         footer {
             text-align: center;
             padding: 48px;
-            border-top: 1px solid var(--border);
             margin-top: 60px;
         }
 
         footer p {
             font-size: 14px;
-            color: var(--text-tertiary);
-        }
-
-        footer a {
-            color: var(--text-tertiary);
-            text-decoration: none;
-        }
-
-        footer a:hover {
-            color: var(--text-primary);
-        }
-
-        footer svg {
-            transition: color 0.15s;
+            color: var(--text-secondary);
         }
 
         footer a {
@@ -753,7 +699,7 @@
         }
 
         footer a:hover {
-            text-decoration: underline;
+            color: var(--accent);
         }
 
         /* Responsive */
@@ -788,7 +734,7 @@
                 padding: 48px 24px;
             }
 
-            .hero h1 {
+            #typing-title {
                 font-size: 28px;
             }
 
@@ -799,13 +745,11 @@
     </style>
 </head>
 <body>
-    <nav>
+    <nav class="glass-card" style="padding: 16px 48px;">
         <a href="https://sparki.io" class="logo"><img src="https://sparki.io/_next/image?url=%2Flogo-text.svg&w=256&q=75" alt="sparki" height="24" style="vertical-align: middle;"></a>
         <ul class="nav-links">
             <li><a href="https://sparki.io">Try Sparki</a></li>
             <li><a href="#" class="active">Prompt Library</a></li>
-        </ul>
-    </nav>
         </ul>
     </nav>
 
@@ -853,7 +797,7 @@
             <div class="content-header">
                 <h2 class="content-title" id="content-title">All Prompts</h2>
                 <div style="display: flex; gap: 12px; align-items: center;">
-                    <input type="text" id="search-input" placeholder="Search prompts..." oninput="handleSearch()" style="padding: 8px 14px; border: 2px solid var(--text-primary); border-radius: 6px; font-size: 14px; width: 200px; transition: all 0.2s; outline: none;">
+                    <input type="text" id="search-input" placeholder="Search prompts..." oninput="handleSearch()">
                     <select class="sort-select" onchange="handleSort(this.value)">
                         <option value="recent">Most Recent</option>
                         <option value="popular">Most Popular</option>
@@ -862,7 +806,6 @@
                 </div>
             </div>
             <div class="prompt-grid" id="prompt-grid">
-                <!-- Cards will be injected by JS -->
             </div>
         </section>
     </main>
@@ -890,7 +833,7 @@
     </footer>
 
     <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
-        <div class="modal" id="modal">
+        <div class="modal glass-card" id="modal">
             <div class="modal-header">
                 <div class="modal-author">
                     <div class="author-avatar" id="modal-avatar"></div>
@@ -934,7 +877,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <a href="#" id="modal-view-original" target="_blank" class="btn btn-outline">View on X</a>
+          <a href="#" id="modal-view-original" target="_blank" class="btn btn-outline">View on X</a>
                 <a href="https://sparki.io/create" target="_blank" class="btn btn-primary" onclick="navigator.clipboard.writeText(window.currentPromptText||'')">Try ⚡</a>
             </div>
         </div>
@@ -1080,7 +1023,7 @@
 
         function createPromptCard(prompt) {
             return `
-                <article class="prompt-card">
+                <article class="prompt-card glass-card">
                     <div class="card-image">
                         <img src="https://picsum.photos/seed/${prompt.tweet_id}/550/307" alt="Prompt preview" loading="lazy">
                     </div>
@@ -1189,21 +1132,10 @@
             document.body.style.overflow = '';
         }
 
-        function copyPrompt() {
-            const text = window.currentPromptText || '';
-            navigator.clipboard.writeText(text).then(() => {
-                const btn = document.querySelector('.modal-footer .btn-primary');
-                const original = btn.textContent;
-                btn.textContent = 'Copied!';
-                setTimeout(() => { btn.textContent = original; }, 1500);
-            });
-        }
-
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape') closeModal();
         });
 
-        // Category filter handlers
         document.querySelectorAll('#category-filters button').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('#category-filters button').forEach(b => b.classList.remove('active'));
@@ -1212,7 +1144,6 @@
             });
         });
 
-        // Sort handlers
         document.querySelectorAll('.filter-list:nth-child(2) button').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.filter-list:nth-child(2) button').forEach(b => b.classList.remove('active'));
@@ -1220,16 +1151,13 @@
             });
         });
 
-        // Initial render
         renderPrompts();
 
-        // Typing animation
         const titleEl = document.getElementById('typing-title');
         const words = ['⚡ Veo3 Prompt Library', '✨ Handpicked Video Prompts', '🔥 Best Veo3 Prompts'];
         let wordIndex = 0;
         let charIndex = 0;
         let isDeleting = false;
-        let cursorVisible = true;
 
         function typeEffect() {
             const current = words[wordIndex];
