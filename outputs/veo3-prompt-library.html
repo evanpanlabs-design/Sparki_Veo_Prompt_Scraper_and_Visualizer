@@ -86,8 +86,22 @@
         .hero {
             padding: 80px 48px 60px;
             text-align: center;
-            border-bottom: 2px solid var(--accent);
-            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--accent-light) 50%, var(--pink-light) 100%);
+            border-bottom: 2px solid var(--text-primary);
+            background: linear-gradient(135deg,
+                #e6f7ff 0%,
+                #fff0f3 25%,
+                #fff8e6 50%,
+                #e6f7ff 75%,
+                #f0f8ff 100%
+            );
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
 
         .hero h1 {
@@ -285,18 +299,16 @@
 
         /* Prompt Card */
         .prompt-card {
-            border: 2px solid var(--border);
+            border: 4px solid var(--text-primary);
             border-radius: 12px;
             overflow: hidden;
             transition: all 0.25s ease;
             background: white;
-            box-shadow: 0 2px 12px rgba(59, 130, 246, 0.08);
         }
 
         .prompt-card:hover {
-            border-color: var(--accent);
             transform: translateY(-4px);
-            box-shadow: 0 12px 32px rgba(59, 130, 246, 0.15);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
         }
 
         .card-image {
@@ -319,12 +331,6 @@
 
         .card-badge {
             display: none;
-        }
-
-        .prompt-card.border-red,
-        .prompt-card.border-yellow,
-        .prompt-card.border-blue {
-            border-color: var(--border);
         }
 
         @keyframes wiggle {
@@ -469,7 +475,7 @@
 
         .card-footer {
             padding: 16px 20px;
-            background: var(--bg-secondary);
+            background: white;
             display: flex;
             gap: 10px;
         }
@@ -515,10 +521,6 @@
             color: white;
             font-weight: 600;
         }
-
-        .btn-primary.btn-red { background: #f472b6; border-color: #f472b6; }
-        .btn-primary.btn-yellow { background: #fbbf24; border-color: #fbbf24; color: var(--text-primary); }
-        .btn-primary.btn-blue { background: var(--accent); border-color: var(--accent); }
 
         .btn-primary:hover {
             background: var(--text-primary);
@@ -1076,17 +1078,8 @@
         }
 
         function createPromptCard(prompt) {
-            const colors = ['red', 'yellow', 'blue'];
-            const badges = ['Hot!', 'Selected', 'Handpicked'];
-            const borderColor = colors[Math.floor(Math.random() * colors.length)];
-            const showBadge = Math.random() > 0.5;
-            const badge = badges[Math.floor(Math.random() * badges.length)];
-            const badgeColor = colors[Math.floor(Math.random() * colors.length)];
-            const badgeDelay = (Math.random() * 2).toFixed(1);
-            const btnColor = colors[Math.floor(Math.random() * colors.length)];
             return `
-                <article class="prompt-card border-${borderColor}">
-                    ${showBadge ? `<div class="card-badge ${badgeColor}" style="animation-delay: ${badgeDelay}s">${badge}</div>` : ''}
+                <article class="prompt-card">
                     <div class="card-image">
                         <img src="https://picsum.photos/seed/${prompt.tweet_id}/550/307" alt="Prompt preview" loading="lazy">
                     </div>
@@ -1122,7 +1115,7 @@
                     </div>
                     <div class="card-footer">
                         <a href="${prompt.url}" target="_blank" class="btn btn-outline">View on X</a>
-                        <a href="https://sparki.io/create" target="_blank" class="btn btn-primary btn-${btnColor}" onclick="navigator.clipboard.writeText('${prompt.prompt_text.replace(/'/g, "\\'")}')">Try ⚡</a>
+                        <a href="https://sparki.io/create" target="_blank" class="btn btn-primary" onclick="navigator.clipboard.writeText('${prompt.prompt_text.replace(/'/g, "\\'")}')">Try ⚡</a>
                     </div>
                 </article>
             `;
@@ -1172,11 +1165,6 @@
             const prompt = prompts.find(p => p.tweet_id === tweetId);
             if (!prompt) return;
             window.currentPromptText = prompt.prompt_text;
-
-            const colors = ['red', 'yellow', 'blue'];
-            const btnColor = colors[Math.floor(Math.random() * colors.length)];
-            const btn = document.querySelector('.modal-footer .btn-primary');
-            btn.className = 'btn btn-primary btn-' + btnColor;
 
             document.getElementById('modal-avatar').textContent = prompt.author.name[0];
             document.getElementById('modal-author-name').textContent = prompt.author.name;
