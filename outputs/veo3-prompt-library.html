@@ -10,19 +10,20 @@
     <style>
         :root {
             --bg-primary: #ffffff;
-            --bg-secondary: #fafafa;
-            --bg-tertiary: #f5f5f5;
+            --bg-secondary: #f0fdff;
+            --bg-tertiary: #e6f7ff;
             --text-primary: #0a0a0a;
             --text-secondary: #404040;
             --text-tertiary: #737373;
-            --border: #e5e5e5;
-            --border-strong: #d4d4d4;
-            --accent: #0a0a0a;
-            --tag-bg: #f0f0f0;
-            --mondrian-red: #D40920;
-            --mondrian-yellow: #F7D842;
-            --mondrian-blue: #1356A2;
-            --spark-yellow: #FFE135;
+            --border: #d0e8ff;
+            --border-strong: #a5d4ff;
+            --accent: #3B82F6;
+            --accent-light: #A5FFFF;
+            --accent-glow: rgba(59, 130, 246, 0.15);
+            --pink: #ffc0cb;
+            --pink-light: #fff0f3;
+            --yellow-light: #fffce8;
+            --tag-bg: #e6f7ff;
         }
 
         * {
@@ -85,29 +86,8 @@
         .hero {
             padding: 80px 48px 60px;
             text-align: center;
-            border-bottom: 3px solid var(--text-primary);
-            background-color: #fafafa;
-            background-image:
-                repeating-linear-gradient(
-                    -45deg,
-                    transparent,
-                    transparent 20px,
-                    rgba(212, 9, 32, 0.08) 20px,
-                    rgba(212, 9, 32, 0.08) 21px,
-                    transparent 21px,
-                    transparent 40px,
-                    rgba(247, 216, 66, 0.08) 40px,
-                    rgba(247, 216, 66, 0.08) 41px,
-                    transparent 41px,
-                    transparent 60px,
-                    rgba(19, 86, 162, 0.08) 60px,
-                    rgba(19, 86, 162, 0.08) 61px
-                ),
-                radial-gradient(circle at 10% 20%, rgba(212, 9, 32, 0.12) 0%, transparent 8%),
-                radial-gradient(circle at 90% 80%, rgba(247, 216, 66, 0.15) 0%, transparent 10%),
-                radial-gradient(circle at 50% 50%, rgba(19, 86, 162, 0.08) 0%, transparent 12%),
-                radial-gradient(circle at 80% 20%, rgba(212, 9, 32, 0.1) 0%, transparent 6%),
-                radial-gradient(circle at 20% 80%, rgba(247, 216, 66, 0.1) 0%, transparent 8%);
+            border-bottom: 2px solid var(--accent);
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--accent-light) 50%, var(--pink-light) 100%);
         }
 
         .hero h1 {
@@ -154,10 +134,7 @@
             font-size: 32px;
             font-weight: 700;
             letter-spacing: -1px;
-            background: linear-gradient(135deg, var(--mondrian-red), var(--mondrian-yellow), var(--mondrian-blue));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--accent);
         }
 
         .stat-label {
@@ -227,13 +204,14 @@
             transform: translateY(-50%);
             width: 12px;
             height: 12px;
-            border-radius: 2px;
-            border: 2px solid var(--text-primary);
+            border-radius: 50%;
+            background: var(--accent);
+            border: 2px solid var(--border-strong);
         }
 
-        .filter-list button[data-category="video-generation"]::before { background: var(--mondrian-blue); }
-        .filter-list button[data-category="product-photography"]::before { background: var(--mondrian-red); }
-        .filter-list button[data-category="cinematic"]::before { background: var(--mondrian-yellow); }
+        .filter-list button[data-category="video-generation"]::before { background: var(--accent); }
+        .filter-list button[data-category="product-photography"]::before { background: #f472b6; }
+        .filter-list button[data-category="cinematic"]::before { background: #fbbf24; border-color: #f59e0b; }
 
         .filter-list button:hover {
             background: var(--bg-tertiary);
@@ -307,18 +285,18 @@
 
         /* Prompt Card */
         .prompt-card {
-            border: 4px solid var(--text-primary);
-            border-radius: 4px;
-            transition: all 0.2s;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.25s ease;
             background: white;
-            position: relative;
+            box-shadow: 0 2px 12px rgba(59, 130, 246, 0.08);
         }
 
         .prompt-card:hover {
-            transform: translateY(-6px) rotate(-0.5deg) scale(1.01);
-            box-shadow: 8px 8px 0 var(--mondrian-red),
-                        -8px 8px 0 var(--mondrian-yellow),
-                        0 12px 20px rgba(0,0,0,0.15);
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(59, 130, 246, 0.15);
         }
 
         .card-image {
@@ -336,33 +314,17 @@
         }
 
         .prompt-card:hover .card-image img {
-            transform: scale(1.05);
+            transform: scale(1.03);
         }
 
         .card-badge {
-            position: absolute;
-            top: -6px;
-            right: -6px;
-            font-family: 'Arial Black', sans-serif;
-            font-size: 14px;
-            font-weight: 900;
-            padding: 6px 14px;
-            color: white;
-            transform: rotate(3deg);
-            animation: wiggle 2s ease-in-out infinite;
-            z-index: 10;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            display: none;
         }
-
-        .card-badge.red { background: var(--mondrian-red); }
-        .card-badge.yellow { background: var(--mondrian-yellow); color: var(--text-primary); }
-        .card-badge.blue { background: var(--mondrian-blue); }
 
         .prompt-card.border-red,
         .prompt-card.border-yellow,
         .prompt-card.border-blue {
-            border-color: var(--text-primary);
+            border-color: var(--border);
         }
 
         @keyframes wiggle {
@@ -432,20 +394,21 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
             padding: 4px 10px;
-            border-radius: 4px;
+            border-radius: 20px;
             color: white;
+            background: var(--accent);
         }
 
         .prompt-category[data-category="video-generation"] {
-            background: var(--mondrian-blue);
+            background: var(--accent);
         }
 
         .prompt-category[data-category="product-photography"] {
-            background: var(--mondrian-red);
+            background: #f472b6;
         }
 
         .prompt-category[data-category="cinematic"] {
-            background: var(--mondrian-yellow);
+            background: #fbbf24;
             color: var(--text-primary);
         }
             margin-bottom: 12px;
@@ -524,20 +487,21 @@
         }
 
         #search-input:focus {
-            border-color: var(--mondrian-yellow);
-            box-shadow: 3px 3px 0 var(--mondrian-yellow);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+            outline: none;
         }
 
         .btn-outline {
-            background: var(--text-primary);
-            border: 2px solid var(--text-primary);
-            color: white;
-            font-weight: 600;
+            background: white;
+            border: 2px solid var(--border);
+            color: var(--text-primary);
+            font-weight: 500;
         }
 
         .btn-outline:hover {
-            background: white;
-            color: var(--text-primary);
+            border-color: var(--accent);
+            color: var(--accent);
         }
 
         .btn-outline:hover {
@@ -546,18 +510,19 @@
         }
 
         .btn-primary {
-            background: var(--mondrian-red);
-            border: 2px solid var(--text-primary);
+            background: var(--accent);
+            border: 2px solid var(--accent);
             color: white;
-            font-weight: 700;
+            font-weight: 600;
         }
 
-        .btn-primary.btn-red { background: var(--mondrian-red); color: white; }
-        .btn-primary.btn-yellow { background: var(--mondrian-yellow); color: var(--text-primary); }
-        .btn-primary.btn-blue { background: var(--mondrian-blue); color: white; }
+        .btn-primary.btn-red { background: #f472b6; border-color: #f472b6; }
+        .btn-primary.btn-yellow { background: #fbbf24; border-color: #fbbf24; color: var(--text-primary); }
+        .btn-primary.btn-blue { background: var(--accent); border-color: var(--accent); }
 
         .btn-primary:hover {
             background: var(--text-primary);
+            border-color: var(--text-primary);
             color: white;
         }
 
