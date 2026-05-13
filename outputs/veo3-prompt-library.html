@@ -170,47 +170,112 @@
 
         /* Sidebar */
         .sidebar {
-            width: 240px;
-            flex-shrink: 0;
-            transition: width 0.3s ease, margin 0.3s ease;
-            overflow: hidden;
-            margin-right: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 260px;
+            height: 100vh;
+            background: white;
+            border-right: 2px solid var(--text-primary);
+            z-index: 200;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar.open {
+            transform: translateX(0);
         }
 
         .sidebar.collapsed {
-            width: 0;
-            margin-right: 0;
-            overflow: hidden;
+            width: 260px;
+            transform: translateX(-100%);
         }
 
         .sidebar-toggle {
+            position: fixed;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 36px;
+            height: 48px;
+            background: white;
+            border: 2px solid var(--text-primary);
+            border-left: none;
+            border-radius: 0 8px 8px 0;
+            cursor: pointer;
+            z-index: 150;
             display: flex;
             align-items: center;
-            gap: 6px;
-            padding: 8px 12px;
-            border: 1px solid var(--border);
-            background: white;
-            font-size: 12px;
-            font-weight: 500;
-            cursor: pointer;
-            border-radius: 6px;
-            color: var(--text-primary);
-            white-space: nowrap;
-            margin-bottom: 16px;
+            justify-content: center;
+            transition: left 0.3s ease;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.1);
         }
 
         .sidebar-toggle::before {
-            content: '◀';
-            font-size: 10px;
+            content: '▶';
+            font-size: 12px;
+            color: var(--text-secondary);
             transition: transform 0.3s;
         }
 
-        .sidebar.collapsed .sidebar-toggle::before {
+        .sidebar.open ~ .sidebar-toggle::before,
+        .sidebar-toggle:hover::before {
             transform: rotate(180deg);
+        }
+
+        .filter-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+
+        .filter-overlay.active {
+            opacity: 1;
+            visibility: visible;
         }
 
         .filter-section {
             margin-bottom: 32px;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-title {
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .sidebar-close {
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--border);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            transition: all 0.15s;
+        }
+
+        .sidebar-close:hover {
+            background: var(--bg-tertiary);
         }
 
         .filter-title {
@@ -376,12 +441,12 @@
 
         .card-badge {
             position: absolute;
-            top: 8px;
-            right: 8px;
+            top: -6px;
+            right: -6px;
             font-family: 'Arial Black', sans-serif;
-            font-size: 10px;
+            font-size: 14px;
             font-weight: 900;
-            padding: 3px 8px;
+            padding: 6px 14px;
             color: white;
             transform: rotate(3deg);
             animation: wiggle 2s ease-in-out infinite;
@@ -827,31 +892,26 @@
             }
 
             .sidebar {
-                width: 100%;
-                overflow: visible;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 280px;
+                height: 100vh;
+                z-index: 200;
             }
 
-            .sidebar.collapsed {
-                width: 100%;
-            }
-
-            .sidebar.collapsed .sidebar-content {
-                display: flex;
+            .sidebar.open {
+                transform: translateX(0);
             }
 
             .sidebar-toggle {
                 display: none !important;
             }
 
-            .sidebar .sidebar-content {
-                display: flex !important;
-                gap: 24px;
+            .filter-overlay.active {
+                display: block;
             }
-
-            .filter-section {
-                flex-shrink: 0;
-                margin-bottom: 0;
-            }
+        }
 
             nav {
                 padding: 16px 24px;
@@ -883,8 +943,8 @@
             <li><a href="#" class="active">Prompt Library</a></li>
         </ul>
     </nav>
-        </ul>
-    </nav>
+
+    <div class="filter-overlay" id="filter-overlay"></div>
 
     <header class="hero">
         <h1><div id="typing-title"></div></h1>
@@ -906,8 +966,11 @@
     </header>
 
     <main class="main-container">
-        <aside class="sidebar collapsed">
-            <button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('collapsed')">☰ Filters</button>
+        <aside class="sidebar" id="filter-sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-title">Filters</span>
+                <button class="sidebar-close" onclick="closeDrawer()">✕</button>
+            </div>
             <div class="sidebar-content">
             <div class="filter-section">
                 <div class="filter-title">Category</div>
@@ -928,6 +991,7 @@
             </div>
             </div>
         </aside>
+        <button class="sidebar-toggle" id="sidebar-toggle" onclick="toggleDrawer()">▶</button>
 
         <section class="content">
             <div class="content-header">
@@ -1024,6 +1088,7 @@
         const prompts = [
             {
                 "tweet_id": "2042228486958657788",
+                "id": 1,
                 "url": "https://x.com/IqraSaifiii/status/2042228486958657788",
                 "category": "video-generation",
                 "title": "Mountain-Sized Stag-God Chase Scene",
@@ -1034,6 +1099,7 @@
             },
             {
                 "tweet_id": "2039021972089417822",
+                "id": 2,
                 "url": "https://x.com/FlowbyGoogle/status/2039021972089417822",
                 "category": "video-generation",
                 "title": "Veo 3.1 Lite in Flow",
@@ -1044,6 +1110,7 @@
             },
             {
                 "tweet_id": "2038711650799194614",
+                "id": 3,
                 "url": "https://x.com/LudovicCreator/status/2038711650799194614",
                 "category": "video-generation",
                 "title": "Frozen Ocean Fracture",
@@ -1054,6 +1121,7 @@
             },
             {
                 "tweet_id": "2039937752762843570",
+                "id": 4,
                 "url": "https://x.com/Ozayrr_irl/status/2039937752762843570",
                 "category": "video-generation",
                 "title": "Giant Colossal Dragon",
@@ -1064,6 +1132,7 @@
             },
             {
                 "tweet_id": "2040885990869332385",
+                "id": 5,
                 "url": "https://x.com/LudovicCreator/status/2040885990869332385",
                 "category": "video-generation",
                 "title": "White Tiger in Snowy Tundra",
@@ -1074,6 +1143,7 @@
             },
             {
                 "tweet_id": "2029550245106061495",
+                "id": 6,
                 "url": "https://x.com/thetomhallett/status/2029550245106061495",
                 "category": "video-generation",
                 "title": "Disney-Pixar Character Video Workflow",
@@ -1084,6 +1154,7 @@
             },
             {
                 "tweet_id": "2002146672168816956",
+                "id": 7,
                 "url": "https://x.com/ai_for_success/status/2002146672168816956",
                 "category": "video-generation",
                 "title": "Post-Apocalyptic FPV Cinematic Flight",
@@ -1094,6 +1165,7 @@
             },
             {
                 "tweet_id": "2008912370551357865",
+                "id": 8,
                 "url": "https://x.com/Strength04_X/status/2008912370551357865",
                 "category": "product-photography",
                 "title": "Coca-Cola Brand Fantasy Scene",
@@ -1104,6 +1176,7 @@
             },
             {
                 "tweet_id": "2010290781819695350",
+                "id": 9,
                 "url": "https://x.com/Strength04_X/status/2010290781819695350",
                 "category": "product-photography",
                 "title": "Mango Tango Juice Product Shot",
@@ -1114,6 +1187,7 @@
             },
             {
                 "tweet_id": "2007393236214833393",
+                "id": 10,
                 "url": "https://x.com/Strength04_X/status/2007393236214833393",
                 "category": "product-photography",
                 "title": "Peach Can Commercial Video",
@@ -1124,6 +1198,7 @@
             },
             {
                 "tweet_id": "2011081765419639037",
+                "id": 11,
                 "url": "https://x.com/iamrealsnow/status/2011081765419639037",
                 "category": "cinematic",
                 "title": "Arctic Eagle Companion Cinematic",
@@ -1134,6 +1209,7 @@
             },
             {
                 "tweet_id": "2015773950547292185",
+                "id": 12,
                 "url": "https://x.com/Naiknelofar788/status/2015773950547292185",
                 "category": "video-generation",
                 "title": "Kashmir Mountain Flood Rescue Scene",
@@ -1144,6 +1220,7 @@
             },
             {
                 "tweet_id": "2009900632527036785",
+                "id": 13,
                 "url": "https://x.com/Strength04_X/status/2009900632527036785",
                 "category": "video-generation",
                 "title": "Surreal Dubai Coffee Aerial Scene",
@@ -1169,7 +1246,7 @@
                 <article class="prompt-card">
                     ${showBadge ? `<div class="card-badge ${badgeColor}" style="animation-delay: ${badgeDelay}s">${badge}</div>` : ''}
                     <div class="card-image">
-                        <img src="https://picsum.photos/seed/${prompt.tweet_id}/550/307" alt="Prompt preview" loading="lazy">
+                        <img src="generated_images/${prompt.id}.png" alt="Prompt preview" loading="lazy" onerror="this.src='https://picsum.photos/seed/${prompt.tweet_id}/550/307'">
                     </div>
                     <div class="card-header">
                         <div class="author-avatar">${prompt.author.name[0]}</div>
@@ -1248,6 +1325,22 @@
         function handleSort() {
             renderPrompts(document.querySelector('#category-filters .active')?.dataset.category || 'all');
         }
+
+        function toggleDrawer() {
+            const sidebar = document.getElementById('filter-sidebar');
+            const overlay = document.getElementById('filter-overlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
+        }
+
+        function closeDrawer() {
+            const sidebar = document.getElementById('filter-sidebar');
+            const overlay = document.getElementById('filter-overlay');
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
+        }
+
+        document.getElementById('filter-overlay').addEventListener('click', closeDrawer);
 
         function openModal(tweetId) {
             const prompt = prompts.find(p => p.tweet_id === tweetId);
