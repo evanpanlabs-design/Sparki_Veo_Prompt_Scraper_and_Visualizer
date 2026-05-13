@@ -173,25 +173,20 @@
             position: fixed;
             top: 0;
             left: 0;
-            width: 260px;
+            width: 360px;
             height: 100vh;
             background: white;
-            border-right: 2px solid var(--text-primary);
             z-index: 200;
             transform: translateX(-100%);
-            transition: transform 0.3s ease;
+            transition: transform 0.3s ease, left 0.3s ease;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.15);
         }
 
         .sidebar.open {
             transform: translateX(0);
-        }
-
-        .sidebar.collapsed {
-            width: 260px;
-            transform: translateX(-100%);
         }
 
         .sidebar-toggle {
@@ -199,11 +194,9 @@
             left: 0;
             top: 50%;
             transform: translateY(-50%);
-            width: 28px;
+            width: 24px;
             height: 44px;
             background: white;
-            border: 2px solid var(--text-primary);
-            border-left: none;
             border-radius: 0 6px 6px 0;
             cursor: pointer;
             z-index: 150;
@@ -211,7 +204,7 @@
             align-items: center;
             justify-content: center;
             transition: left 0.3s ease;
-            box-shadow: 2px 0 6px rgba(0,0,0,0.12);
+            box-shadow: 2px 0 8px rgba(0,0,0,0.15);
         }
 
         .sidebar-toggle::before {
@@ -227,7 +220,7 @@
         }
 
         .sidebar.open ~ .sidebar-toggle {
-            left: 260px;
+            left: 360px;
         }
 
         .filter-overlay {
@@ -247,39 +240,6 @@
 
         .filter-section {
             margin-bottom: 32px;
-        }
-
-        .sidebar-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .sidebar-title {
-            font-size: 14px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .sidebar-close {
-            width: 32px;
-            height: 32px;
-            border: 1px solid var(--border);
-            background: white;
-            border-radius: 6px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            transition: all 0.15s;
-        }
-
-        .sidebar-close:hover {
-            background: var(--bg-tertiary);
         }
 
         .filter-title {
@@ -971,10 +931,6 @@
 
     <main class="main-container">
         <aside class="sidebar" id="filter-sidebar">
-            <div class="sidebar-header">
-                <span class="sidebar-title">Filters</span>
-                <button class="sidebar-close" onclick="closeDrawer()">✕</button>
-            </div>
             <div class="sidebar-content">
             <div class="filter-section">
                 <div class="filter-title">Category</div>
