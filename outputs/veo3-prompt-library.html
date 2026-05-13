@@ -238,6 +238,10 @@
             visibility: visible;
         }
 
+        .sidebar-content {
+            padding: 20px 24px;
+        }
+
         .filter-section {
             margin-bottom: 32px;
         }
@@ -613,12 +617,33 @@
             border: 2px solid var(--accent);
             color: white;
             font-weight: 600;
+            flex: 1;
         }
 
         .btn-primary:hover {
             background: var(--text-primary);
             border-color: var(--text-primary);
             color: white;
+        }
+
+        .btn-share {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            transition: all 0.15s;
+        }
+
+        .btn-share:hover {
+            border-color: var(--accent);
+            color: var(--accent);
         }
 
         /* Modal */
@@ -1196,15 +1221,8 @@
         }
 
         function createPromptCard(prompt) {
-            const badges = ['HOT!', 'Handpicked', 'NEW'];
-            const badgeColors = ['red', 'yellow', 'blue'];
-            const showBadge = Math.random() > 0.4;
-            const badge = badges[Math.floor(Math.random() * badges.length)];
-            const badgeColor = badgeColors[Math.floor(Math.random() * badgeColors.length)];
-            const badgeDelay = (Math.random() * 2).toFixed(1);
             return `
                 <article class="prompt-card">
-                    ${showBadge ? `<div class="card-badge ${badgeColor}" style="animation-delay: ${badgeDelay}s">${badge}</div>` : ''}
                     <div class="card-image">
                         <img src="generated_images/${prompt.id}.png" alt="Prompt preview" loading="lazy" onerror="this.src='https://picsum.photos/seed/${prompt.tweet_id}/550/307'">
                     </div>
@@ -1239,7 +1257,9 @@
                         </div>
                     </div>
                     <div class="card-footer">
-                        <a href="${prompt.url}" target="_blank" class="btn btn-outline">View on X</a>
+                        <button class="btn btn-share" onclick="sharePrompt('${prompt.id}')" title="Share">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                        </button>
                         <a href="https://sparki.io/create" target="_blank" class="btn btn-primary" onclick="navigator.clipboard.writeText('${prompt.prompt_text.replace(/'/g, "\\'")}')">Try ⚡</a>
                     </div>
                 </article>
@@ -1301,6 +1321,15 @@
         }
 
         document.getElementById('filter-overlay').addEventListener('click', closeDrawer);
+
+        function sharePrompt(id) {
+            const url = `https://sparki.io/prompt/${id}`;
+            if (navigator.share) {
+                navigator.share({ title: 'Veo Prompt', url });
+            } else {
+                navigator.clipboard.writeText(url);
+            }
+        }
 
         function openModal(tweetId) {
             const prompt = prompts.find(p => p.tweet_id === tweetId);
