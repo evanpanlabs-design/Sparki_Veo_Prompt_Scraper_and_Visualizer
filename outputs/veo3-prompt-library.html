@@ -355,8 +355,10 @@
 
         /* Prompt Grid - Masonry Layout */
         .prompt-grid {
-            column-count: 4;
-            column-gap: 20px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            align-items: start;
         }
 
         /* Prompt Card */
@@ -367,8 +369,6 @@
             transition: all 0.25s ease;
             background: white;
             position: relative;
-            break-inside: avoid;
-            margin-bottom: 20px;
         }
 
         .prompt-card:hover {
@@ -902,10 +902,6 @@
 
             .stats {
                 gap: 32px;
-            }
-
-            .prompt-grid {
-                column-count: 2;
             }
         }
     </style>
