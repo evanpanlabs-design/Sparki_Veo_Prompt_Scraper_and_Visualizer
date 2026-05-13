@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Veo3 Prompt Library — Sparki</title>
+    <title>Veo Prompt Library — Sparki</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -106,7 +106,7 @@
         }
 
         .hero h1 {
-            font-size: 42px;
+            font-size: 36px;
             font-weight: 700;
             letter-spacing: -1.5px;
             margin-bottom: 16px;
@@ -121,11 +121,11 @@
         }
 
         #typing-title {
-            font-size: 42px;
+            font-size: 36px;
             font-weight: 700;
             letter-spacing: -1.5px;
             margin-bottom: 16px;
-            min-height: 52px;
+            min-height: 44px;
         }
 
         .hero p {
@@ -172,6 +172,35 @@
         .sidebar {
             width: 240px;
             flex-shrink: 0;
+        }
+
+        .sidebar-toggle {
+            display: none;
+            width: 100%;
+            padding: 10px 16px;
+            border: 1px solid var(--border);
+            background: white;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            text-align: left;
+        }
+
+        .sidebar.collapsed .sidebar-content {
+            display: none;
+        }
+
+        .sidebar-toggle::after {
+            content: '▶';
+            float: right;
+            font-size: 10px;
+            transition: transform 0.2s;
+        }
+
+        .sidebar.collapsed .sidebar-toggle::after {
+            transform: rotate(-90deg);
         }
 
         .filter-section {
@@ -294,17 +323,18 @@
         /* Prompt Grid */
         .prompt-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-            gap: 24px;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 16px;
         }
 
         /* Prompt Card */
         .prompt-card {
             border: 1px solid #808080;
             border-radius: 12px;
-            overflow: hidden;
+            overflow: visible;
             transition: all 0.25s ease;
             background: white;
+            position: relative;
         }
 
         .prompt-card:hover {
@@ -331,13 +361,30 @@
         }
 
         .card-badge {
-            display: none;
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-family: 'Arial Black', sans-serif;
+            font-size: 10px;
+            font-weight: 900;
+            padding: 3px 8px;
+            color: white;
+            transform: rotate(3deg);
+            animation: wiggle 2s ease-in-out infinite;
+            z-index: 10;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-radius: 2px;
         }
+
+        .card-badge.red { background: #ef4444; }
+        .card-badge.yellow { background: #f59e0b; color: white; }
+        .card-badge.blue { background: #3b82f6; }
 
         @keyframes wiggle {
             0%, 100% { transform: rotate(3deg); }
-            25% { transform: rotate(-2deg) scale(1.05); }
-            75% { transform: rotate(5deg); }
+            25% { transform: rotate(-3deg) scale(1.08); }
+            75% { transform: rotate(6deg); }
         }
 
         @keyframes blink {
@@ -356,16 +403,16 @@
         }
 
         .card-header {
-            padding: 20px;
+            padding: 12px 14px;
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
         }
 
         .author-avatar {
-            width: 36px;
-            height: 36px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             background: var(--bg-tertiary);
             display: flex;
@@ -391,7 +438,7 @@
         }
 
         .card-body {
-            padding: 20px;
+            padding: 12px 14px;
         }
 
         .prompt-category {
@@ -422,29 +469,30 @@
         }
 
         .prompt-title {
-            font-size: 16px;
+            font-size: 13px;
             font-weight: 600;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
+            line-height: 1.3;
             line-height: 1.4;
         }
 
         .prompt-preview {
-            font-size: 13px;
+            font-size: 11px;
             color: var(--text-secondary);
-            line-height: 1.6;
-            margin-bottom: 16px;
+            line-height: 1.5;
+            margin-bottom: 8px;
             display: -webkit-box;
-            -webkit-line-clamp: 3;
+            -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
 
         .prompt-meta {
             display: flex;
-            gap: 16px;
-            font-size: 12px;
+            gap: 10px;
+            font-size: 10px;
             color: var(--text-tertiary);
-            padding-top: 16px;
+            padding-top: 8px;
             border-top: 1px solid var(--border);
         }
 
@@ -457,8 +505,8 @@
         .view-more-btn {
             display: block;
             width: 100%;
-            padding: 8px;
-            margin-top: 8px;
+            padding: 5px;
+            margin-top: 6px;
             border: 1px solid var(--border);
             background: white;
             font-size: 12px;
@@ -475,7 +523,7 @@
         }
 
         .card-footer {
-            padding: 16px 20px;
+            padding: 10px 14px;
             background: white;
             display: flex;
             gap: 10px;
@@ -483,8 +531,9 @@
 
         .btn {
             flex: 1;
-            padding: 10px 16px;
-            border-radius: 6px;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 11px;
             font-size: 13px;
             font-weight: 500;
             cursor: pointer;
@@ -811,7 +860,7 @@
 
     <header class="hero">
         <h1><div id="typing-title"></div></h1>
-        <p>A collection of proven prompts for Google Veo 3, scraped from creators and organized for easy discovery.</p>
+        <p>A collection of proven prompts for Google Veo, scraped from creators and organized for easy discovery.</p>
         <div class="stats">
             <div class="stat">
                 <div class="stat-value" id="prompt-count">13</div>
@@ -829,7 +878,9 @@
     </header>
 
     <main class="main-container">
-        <aside class="sidebar">
+        <aside class="sidebar collapsed">
+            <button class="sidebar-toggle" onclick="this.parentElement.classList.toggle('collapsed')">Filters</button>
+            <div class="sidebar-content">
             <div class="filter-section">
                 <div class="filter-title">Category</div>
                 <ul class="filter-list" id="category-filters">
@@ -846,6 +897,7 @@
                     <li><button onclick="document.querySelector('.sort-select').value='popular';handleSort()">Most Popular</button></li>
                     <li><button onclick="document.querySelector('.sort-select').value='longest';handleSort()">Longest Prompt</button></li>
                 </ul>
+            </div>
             </div>
         </aside>
 
@@ -1079,8 +1131,15 @@
         }
 
         function createPromptCard(prompt) {
+            const badges = ['HOT!', 'Handpicked', 'NEW'];
+            const badgeColors = ['red', 'yellow', 'blue'];
+            const showBadge = Math.random() > 0.4;
+            const badge = badges[Math.floor(Math.random() * badges.length)];
+            const badgeColor = badgeColors[Math.floor(Math.random() * badgeColors.length)];
+            const badgeDelay = (Math.random() * 2).toFixed(1);
             return `
                 <article class="prompt-card">
+                    ${showBadge ? `<div class="card-badge ${badgeColor}" style="animation-delay: ${badgeDelay}s">${badge}</div>` : ''}
                     <div class="card-image">
                         <img src="https://picsum.photos/seed/${prompt.tweet_id}/550/307" alt="Prompt preview" loading="lazy">
                     </div>
@@ -1225,7 +1284,7 @@
 
         // Typing animation
         const titleEl = document.getElementById('typing-title');
-        const words = ['⚡ Veo3 Prompt Library', '✨ Handpicked Video Prompts', '🔥 Best Veo3 Prompts'];
+        const words = ['⚡ Veo Prompt Library', '✨ Handpicked Video Prompts', '🔥 Best Veo Prompts'];
         let wordIndex = 0;
         let charIndex = 0;
         let isDeleting = false;
