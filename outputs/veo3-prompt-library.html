@@ -172,36 +172,41 @@
         .sidebar {
             width: 240px;
             flex-shrink: 0;
+            transition: width 0.3s ease, margin 0.3s ease;
+            overflow: hidden;
+            margin-right: 0;
+        }
+
+        .sidebar.collapsed {
+            width: 0;
+            margin-right: 0;
+            overflow: hidden;
         }
 
         .sidebar-toggle {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            width: 100%;
-            padding: 10px 14px;
+            gap: 6px;
+            padding: 8px 12px;
             border: 1px solid var(--border);
             background: white;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 500;
             cursor: pointer;
             border-radius: 6px;
-            margin-bottom: 12px;
             color: var(--text-primary);
+            white-space: nowrap;
+            margin-bottom: 16px;
         }
 
-        .sidebar.collapsed .sidebar-content {
-            display: none;
-        }
-
-        .sidebar-toggle::after {
-            content: '▼';
+        .sidebar-toggle::before {
+            content: '◀';
             font-size: 10px;
-            transition: transform 0.2s;
+            transition: transform 0.3s;
         }
 
-        .sidebar.collapsed .sidebar-toggle::after {
-            transform: rotate(-90deg);
+        .sidebar.collapsed .sidebar-toggle::before {
+            transform: rotate(180deg);
         }
 
         .filter-section {
@@ -324,7 +329,7 @@
         /* Prompt Grid */
         .prompt-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(240px, 280px));
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
             gap: 20px;
         }
 
@@ -823,10 +828,15 @@
 
             .sidebar {
                 width: 100%;
+                overflow: visible;
+            }
+
+            .sidebar.collapsed {
+                width: 100%;
+            }
+
+            .sidebar.collapsed .sidebar-content {
                 display: flex;
-                gap: 24px;
-                overflow-x: auto;
-                padding-bottom: 16px;
             }
 
             .sidebar-toggle {
@@ -897,7 +907,7 @@
 
     <main class="main-container">
         <aside class="sidebar collapsed">
-            <button class="sidebar-toggle" onclick="this.parentElement.classList.toggle('collapsed')">Filters</button>
+            <button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('collapsed')">☰ Filters</button>
             <div class="sidebar-content">
             <div class="filter-section">
                 <div class="filter-title">Category</div>
