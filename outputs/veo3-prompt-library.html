@@ -296,6 +296,8 @@
         .filter-list button[data-category="video-generation"]::before { background: var(--accent); }
         .filter-list button[data-category="product-photography"]::before { background: #f472b6; }
         .filter-list button[data-category="cinematic"]::before { background: #fbbf24; border-color: #f59e0b; }
+        .filter-list button[data-category="image-generation"]::before { background: #a855f7; border-color: #9333ea; }
+        .filter-list button[data-category="character-design"]::before { background: #22c55e; border-color: #16a34a; }
 
         .filter-list button:hover {
             background: var(--bg-tertiary);
@@ -496,6 +498,14 @@
         .prompt-category[data-category="cinematic"] {
             background: #fbbf24;
             color: var(--text-primary);
+        }
+
+        .prompt-category[data-category="image-generation"] {
+            background: #a855f7;
+        }
+
+        .prompt-category[data-category="character-design"] {
+            background: #22c55e;
         }
 
         .prompt-title {
@@ -922,11 +932,11 @@
         <p>A collection of proven prompts for Google Veo, scraped from creators and organized for easy discovery.</p>
         <div class="stats">
             <div class="stat">
-                <div class="stat-value" id="prompt-count">13</div>
+                <div class="stat-value" id="prompt-count">17</div>
                 <div class="stat-label">Prompts</div>
             </div>
             <div class="stat">
-                <div class="stat-value">3</div>
+                <div class="stat-value">5</div>
                 <div class="stat-label">Categories</div>
             </div>
             <div class="stat">
@@ -942,10 +952,12 @@
             <div class="filter-section">
                 <div class="filter-title">Category</div>
                 <ul class="filter-list" id="category-filters">
-                    <li><button class="active" data-category="all">All <span class="filter-count">13</span></button></li>
+                    <li><button class="active" data-category="all">All <span class="filter-count">17</span></button></li>
                     <li><button data-category="video-generation">Video Generation <span class="filter-count">9</span></button></li>
                     <li><button data-category="product-photography">Product Photography <span class="filter-count">3</span></button></li>
-                    <li><button data-category="cinematic">Cinematic <span class="filter-count">1</span></button></li>
+                    <li><button data-category="cinematic">Cinematic <span class="filter-count">3</span></button></li>
+                    <li><button data-category="image-generation">Image Generation <span class="filter-count">1</span></button></li>
+                    <li><button data-category="character-design">Character Design <span class="filter-count">1</span></button></li>
                 </ul>
             </div>
             <div class="filter-section">
@@ -1195,6 +1207,50 @@
                 "notes": "Uses Gemini Nano Banana Pro device",
                 "author": { "name": "𝐌", "screen_name": "Strength04_X", "followers": 14500 },
                 "engagement": { "likes": 176, "retweets": 21, "replies": 32 }
+            },
+            {
+                "tweet_id": "2053857256509243497",
+                "id": 14,
+                "url": "https://x.com/Mho_23/status/2053857256509243497",
+                "category": "cinematic",
+                "title": "Professor Writing Trigonometric Proof",
+                "prompt_text": "A professor writes out a mathematical proof for trigonometric identities on a traditional chalkboard, explaining the step he is currently on in the equation.",
+                "notes": null,
+                "author": { "name": "Miko", "screen_name": "Mho_23", "followers": 25500 },
+                "engagement": { "likes": 461, "retweets": 42, "replies": 54 }
+            },
+            {
+                "tweet_id": "2043753023004954753",
+                "id": 15,
+                "url": "https://x.com/zazzygfx/status/2043753023004954753",
+                "category": "cinematic",
+                "title": "3D Crystal Glass Logo in Clouds",
+                "prompt_text": "A premium 3D stylized version of attached logo, rendered as thick, translucent crystal glass with high refraction. The object is floating amidst fluffy, realistic white cumulus clouds against a bright, clear blue sky. Soft natural sunlight creates bright caustic reflections and rainbow dispersion within the glass. Ethereal, airy, and highly polished 3D aesthetic",
+                "notes": "Created with Nano Banana Pro, animated with Veo 3.1 lite. References attached logo asset.",
+                "author": { "name": "Zazzy", "screen_name": "zazzygfx", "followers": 13100 },
+                "engagement": { "likes": 401, "retweets": 40, "replies": 8 }
+            },
+            {
+                "tweet_id": "2038525426084323378",
+                "id": 16,
+                "url": "https://x.com/Just_sharon7/status/2038525426084323378",
+                "category": "image-generation",
+                "title": "Children's Book Seed Watering Scene",
+                "prompt_text": "An open children's picture book rests on a wooden table, showing a whimsical illustration of a small brown seed in cartoon soil. A realistic human hand pours water from a tiny can, with a sparkling stream. Warm golden light, magical mood, overhead close-up, photorealistic, 4K.",
+                "notes": "Structured prompt with photorealistic style, warm golden lighting, magical mood, overhead close-up perspective at 4K resolution. Contains book, illustration, hand, and water elements.",
+                "author": { "name": "Sharon Riley", "screen_name": "Just_sharon7", "followers": 43000 },
+                "engagement": { "likes": 152, "retweets": 21, "replies": 34 }
+            },
+            {
+                "tweet_id": "2013083809038905367",
+                "id": 17,
+                "url": "https://x.com/Strength04_X/status/2013083809038905367",
+                "category": "character-design",
+                "title": "Cute Anthropomorphic Bunny Character 3D Render",
+                "prompt_text": "A full-body 3D render of a cute yet cool anthropomorphic bunny character, standing confidently in a minimalist studio setting. The bunny has soft dark-gray fur with realistic plush texture, long upright ears, and a small pink nose. It is wearing black sunglasses with thin gold frames, a loose black oversized T-shirt featuring a simple white skull icon on the chest, cream-colored knee-length shorts with subtle fabric ribbing, and light orange sneakers with white soles. Hands casually placed in pockets, relaxed street-style pose. Clean neutral gray background, soft diffused studio lighting, gentle shadows, centered composition. Ultra-detailed, high realism, Pixar-quality character design, modern toy-figure aesthetic, smooth depth of field, cinematic lighting, 4K render.",
+                "notes": "Posted via Twitter, referenced Google Veo 3.1 and Gemini Nano Pro",
+                "author": { "name": "𝐌", "screen_name": "Strength04_X", "followers": 14500 },
+                "engagement": { "likes": 201, "retweets": 14, "replies": 52 }
             }
         ];
 
