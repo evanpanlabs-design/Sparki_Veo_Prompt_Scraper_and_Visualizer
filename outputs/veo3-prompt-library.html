@@ -172,41 +172,43 @@
         .sidebar {
             width: 240px;
             flex-shrink: 0;
-            transition: width 0.3s ease, margin 0.3s ease;
+            transition: width 0.3s ease, opacity 0.3s ease;
             overflow: hidden;
-            margin-right: 0;
         }
 
         .sidebar.collapsed {
             width: 0;
-            margin-right: 0;
-            overflow: hidden;
+            opacity: 0;
         }
 
         .sidebar-toggle {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 12px;
+            position: sticky;
+            top: 120px;
+            flex-shrink: 0;
+            padding: 8px 10px;
             border: 1px solid var(--border);
             background: white;
-            font-size: 12px;
-            font-weight: 500;
+            font-size: 14px;
             cursor: pointer;
-            border-radius: 6px;
+            border-radius: 0 6px 6px 0;
             color: var(--text-primary);
-            white-space: nowrap;
-            margin-bottom: 16px;
+            box-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            margin-left: -1px;
+            transition: all 0.2s;
+            z-index: 50;
         }
 
-        .sidebar-toggle::before {
+        .sidebar-toggle:hover {
+            background: var(--bg-tertiary);
+            color: var(--accent);
+        }
+
+        .sidebar.collapsed ~ .sidebar-toggle::before {
+            content: '▶';
+        }
+
+        .sidebar:not(.collapsed) ~ .sidebar-toggle::before {
             content: '◀';
-            font-size: 10px;
-            transition: transform 0.3s;
-        }
-
-        .sidebar.collapsed .sidebar-toggle::before {
-            transform: rotate(180deg);
         }
 
         .filter-section {
@@ -907,7 +909,6 @@
 
     <main class="main-container">
         <aside class="sidebar collapsed">
-            <button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('collapsed')">☰ Filters</button>
             <div class="sidebar-content">
             <div class="filter-section">
                 <div class="filter-title">Category</div>
@@ -928,6 +929,7 @@
             </div>
             </div>
         </aside>
+        <button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('collapsed')">☰</button>
 
         <section class="content">
             <div class="content-header">
