@@ -306,17 +306,10 @@
             background: var(--accent);
             color: white;
         }
-            align-items: center;
-        }
 
         .filter-list button:hover {
             background: var(--bg-tertiary);
             color: var(--text-primary);
-        }
-
-        .filter-list button.active {
-            background: var(--accent);
-            color: white;
         }
 
         .filter-count {
@@ -392,16 +385,6 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-        }
-            overflow: hidden;
-            background: var(--bg-tertiary);
-        }
-
-        .card-image img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.3s ease;
         }
 
         .prompt-card:hover .card-image img {
@@ -513,14 +496,11 @@
             background: #fbbf24;
             color: var(--text-primary);
         }
-            margin-bottom: 12px;
-        }
 
         .prompt-title {
             font-size: 13px;
             font-weight: 600;
             margin-bottom: 6px;
-            line-height: 1.3;
             line-height: 1.4;
         }
 
@@ -531,6 +511,7 @@
             margin-bottom: 8px;
             display: -webkit-box;
             -webkit-line-clamp: 2;
+            line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
