@@ -429,14 +429,48 @@ for c in cats:
 
 ## Workflow Orchestration (for Claude Code agent)
 
-1. **Check API keys**: If `OPENAI_API_KEY` is not set, prompt user to configure `.env`. For Phase 3, verify GCP ADC via `gcloud auth application-default login`.
-2. **Read config**: Load `configs/x-scraper.yaml` — get queries list and negative_keywords
-3. **Phase 1**: Run `x_multi_search.py` → tweets written to DB (`scrape_id` returned)
-4. **Verify Phase 1 output**: Check DB has tweets in `tweets` table
-5. **Phase 2**: Run `extract_prompts.py --scrape-id <id>` → prompts written to DB
-6. **Check pending category suggestions**: If `category_suggestions` table has pending rows, prompt user to approve/reject before continuing
-7. **Phase 3**: Run `generate_images.py --scrape-id <id>` (dry-run first recommended) → images uploaded to GCS, URLs written to `prompts.image_gcs_url`
-8. **Present results**: Summarize total tweets scraped, prompts extracted, category breakdown, images generated
+Use `scripts/run_pipeline.py` as the single entry point:
+
+```bash
+# Check current state (no changes made)
+python scripts/run_pipeline.py
+
+# Dry-run all three phases
+python scripts/run_pipeline.py --all --dry-run
+
+# Run all three phases sequentially
+python scripts/run_pipeline.py --all
+
+# Run individual phases
+python scripts/run_pipeline.py --phase 1
+python scripts/run_pipeline.py --phase 2
+python scripts/run_pipeline.py --phase 3
+```
+
+**Manual pipeline (if needed):**
+1. `python scripts/browser_auth.py` — authenticate X if needed
+2. `python scripts/x_multi_search.py` → tweets → DB
+3. `python scripts/extract_prompts.py --scrape-id <id>` → prompts → DB
+4. `python scripts/generate_images.py --scrape-id <id>` → images → GCS
+
+**Git commits after each phase (auto_git.py):**
+```bash
+python scripts/auto_git.py --phase 1 --stats "38 tweets"
+python scripts/auto_git.py --phase 2 --stats "14 prompts"
+python scripts/auto_git.py --phase 3 --stats "14 images"
+python scripts/auto_git.py --status  # show recent commits
+```
+
+**Web UI (Flask server):**
+```bash
+python scripts/web_server.py --port 5000
+# Then open http://127.0.0.1:5000 in browser
+# GET  /status   — pipeline counts + login status
+# GET  /prompts  — all prompts as JSON
+# POST /start    — trigger pipeline in background
+```
+
+**Before Phase 1**: Ensure `outputs/cookies.json` exists (from `browser_auth.py`) and GCP ADC is configured (`gcloud auth application-default login`).
 
 ---
 
