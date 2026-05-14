@@ -208,6 +208,26 @@ def run_extract_prompts(scrape_id: int = None) -> tuple[int, int]:
     return result.returncode, count_prompts_in_db()
 
 
+def run_expand_queries(scrape_id: int = None) -> tuple[int, list]:
+    """Run Phase 1.5: expand_queries.py. Returns (exit_code, new_queries)."""
+    script = PROJECT_ROOT / "scripts" / "expand_queries.py"
+    cmd = [sys.executable, str(script), "--write"]
+    if scrape_id is not None:
+        cmd.extend(["--scrape-id", str(scrape_id)])
+    result = subprocess.run(
+        cmd,
+        capture_output=True, text=True,
+        env={**os.environ, "PYTHONPATH": str(PROJECT_ROOT)},
+    )
+    new_queries = []
+    if result.returncode == 0:
+        # Parse stdout for new queries (expand_queries.py prints them)
+        for line in result.stdout.splitlines():
+            if line.startswith("  + "):
+                new_queries.append(line[4:].strip())
+    return result.returncode, new_queries
+
+
 def run_generate_images(scrape_id: int = None) -> tuple[int, int]:
     """Run Phase 3: generate_images.py. Returns (exit_code, image_count)."""
     script = PROJECT_ROOT / "scripts" / "generate_images.py"
@@ -315,6 +335,17 @@ def main():
         if rc != 0:
             print(f"  FAIL: Phase 1 exit code {rc}")
             return
+
+        # ── Phase 1.5: Query Expansion ───────────────────────────────────
+        if phase in ("1", "all"):
+            print("\n[Phase 1.5] Expanding queries via LLM...")
+            rc_exp, new_queries = run_expand_queries(scrape_id=latest_scrape)
+            if rc_exp == 0 and new_queries:
+                print(f"  [OK] {len(new_queries)} new queries added to configs/x-scraper.yaml")
+                for q in new_queries:
+                    print(f"    + {q}")
+            else:
+                print(f"  [SKIP] query expansion returned {rc_exp}")
 
     # ── Phase 2 ─────────────────────────────────────────────────────────
     if phase in ("2", "all"):

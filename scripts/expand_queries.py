@@ -146,7 +146,7 @@ def expand_queries(scrape_id: int = None, top_n: int = DEFAULT_TOP_N,
 
     print(f"\nSuggested new queries ({len(new_queries)}):")
     for q in new_queries:
-        print(f"  - {q}")
+        print(f"  + {q}")
 
     if dry_run and not write:
         print("\n(Dry run — no files written. Use --write to update configs/x-scraper.yaml)")
@@ -160,7 +160,9 @@ def expand_queries(scrape_id: int = None, top_n: int = DEFAULT_TOP_N,
         all_queries = existing + [q for q in new_queries if q not in existing]
         cfg["queries"] = all_queries
         config_path.write_text(yaml.dump(cfg, allow_unicode=True), encoding="utf-8")
-        print(f"\nUpdated {config_path} — {len(existing)} existing + {len(new_queries)} new = {len(all_queries)} total")
+        print(f"\n[x-scraper.yaml updated] existing={len(existing)} new={len(new_queries)} total={len(all_queries)}")
+        for q in new_queries:
+            print(f"  + {q}")
         return new_queries
 
     return new_queries
