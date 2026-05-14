@@ -23,7 +23,7 @@ import yaml
 
 from playwright.sync_api import sync_playwright
 
-from db import init_db, create_scrape, insert_tweets
+from db import init_db, create_scrape, insert_tweets, get_all_tweet_ids
 from logging_utils import get_logger, step_log
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -193,18 +193,39 @@ def get_tweet_detail(context, tweet_url: str) -> tuple[str, int]:
 
 # ─── Scroll + extract loop ─────────────────────────────────────────────────────
 
-def scroll_and_extract(page, max_scrolls: int = 20, stale_threshold: int = 3) -> list[dict]:
+def scroll_and_extract(page, max_scrolls: int = 20, stale_threshold: int = 3,
+                       known_ids: set[str] = None) -> list[dict]:
+    """
+    Human-like scroll: random distance, random pauses, wait for content load,
+    skip known tweet IDs.
+    """
+    if known_ids is None:
+        known_ids = set()
     all_tweets = []
     seen_ids = set()
     stale_count = 0
 
     for i in range(max_scrolls):
-        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-        _time.sleep(5)
+        # Random scroll distance (mimics human reading speed variation)
+        scroll_distance = random.choice([300, 450, 600, 750, 900, 1100])
+        page.evaluate(f"window.scrollTo(0, window.scrollY + {scroll_distance})")
+
+        # Random pause after scroll — human doesn't scroll uniformly
+        _time.sleep(random.uniform(2.5, 5.5))
+
+        # Wait for tweets to actually render in DOM before extracting
+        try:
+            page.wait_for_selector('[data-testid="tweet"]', timeout=8)
+        except Exception:
+            # No tweets loaded yet, wait a bit more
+            _time.sleep(2)
 
         tweets = extract_search_tweets(page)
         new_count = 0
         for t in tweets:
+            # Skip tweets already in DB (known from previous scrapes)
+            if t["tweet_id"] in known_ids:
+                continue
             if t["tweet_id"] not in seen_ids:
                 seen_ids.add(t["tweet_id"])
                 all_tweets.append(t)
@@ -220,7 +241,8 @@ def scroll_and_extract(page, max_scrolls: int = 20, stale_threshold: int = 3) ->
         else:
             stale_count = 0
 
-        rnd_delay(100, 500)
+        # Random delay between scrolls — not uniform
+        rnd_delay(400, 1800)
 
     return all_tweets
 
@@ -280,6 +302,11 @@ def scrape_all(
         query_raw_counts = {}  # query -> count before likes filter
         query_dedup_counts = {}  # query -> count after likes filter + dedup
 
+        # Load all known tweet IDs once (for dedup during scraping)
+        init_db()
+        known_ids = get_all_tweet_ids()
+        print(f"\nKnown tweet IDs in DB: {len(known_ids)}")
+
         for query in queries:
             print(f"\n{'='*60}", flush=True)
             print(f"Query: {query}", flush=True)
@@ -302,8 +329,9 @@ def scrape_all(
                 page.close()
                 continue
 
-            # Scroll + extract
-            raw_tweets = scroll_and_extract(page, max_scrolls=20, stale_threshold=3)
+            # Scroll + extract (known_ids passed to skip already-scraped tweets)
+            raw_tweets = scroll_and_extract(page, max_scrolls=20, stale_threshold=3,
+                                            known_ids=known_ids)
             page.close()
 
             query_raw_counts[query] = len(raw_tweets)

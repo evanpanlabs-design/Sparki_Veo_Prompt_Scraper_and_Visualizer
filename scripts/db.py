@@ -246,6 +246,12 @@ def get_recent_tweets(limit: int = 500) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def get_all_tweet_ids() -> set[str]:
+    """Return all tweet_id strings in DB (for dedup during scraping)."""
+    rows = _conn().execute("SELECT tweet_id FROM tweets").fetchall()
+    return {r[0] for r in rows}
+
+
 def get_tweets_without_prompts(limit: int = None) -> list[dict]:
     """Get tweets that have not yet been extracted into prompts (incremental Phase 2)."""
     sql = """
