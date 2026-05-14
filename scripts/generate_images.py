@@ -30,7 +30,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ── Vertex AI / GCP auth ────────────────────────────────────────────────────────
-os.environ.setdefault("GOOGLE_CLOUD_PROJECT", "sparki-2")
+os.environ.setdefault("GOOGLE_CLOUD_PROJECT", "sparki-op")
 os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "global")
 os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
 
@@ -44,7 +44,7 @@ from scripts.db import (
     update_prompt_image,
 )
 
-GCS_BUCKET = "sparki-market-test"
+GCS_BUCKET = "sparki-op-test"
 DEFAULT_CONCURRENCY = 3  # intentionally conservative — rate limits are easier to hit than with text models
 
 # Available image generation models (in preference order — try first, fall back)
