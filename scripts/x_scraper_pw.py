@@ -252,12 +252,13 @@ def scrape(
     proxy: str | None,
     cookies_path: Path,
     output_path: Path,
+    headless: bool = True,
 ) -> list[dict]:
     proxy_config = {"server": proxy} if proxy else None
 
     with sync_playwright() as p:
         browser = p.chromium.launch(
-            headless=False,
+            headless=headless,
             proxy=proxy_config,
             args=[
                 "--disable-blink-features=AutomationControlled",
@@ -429,6 +430,10 @@ def main():
                         help=f"HTTP proxy (default: {DEFAULT_PROXY}, '' to disable)")
     parser.add_argument("--cookies",        type=str, default=str(DEFAULT_COOKIES), help="cookies.json path")
     parser.add_argument("--output",         type=str, default=str(DEFAULT_OUTPUT), help="Output JSON path")
+    parser.add_argument("--headless",       action="store_true", default=True,
+                        help="Run browser in headless mode (default, use --no-headless for visible)")
+    parser.add_argument("--no-headless",    action="store_true",
+                        help="Force visible browser for debugging")
     args = parser.parse_args()
 
     print("=" * 60)
@@ -440,6 +445,8 @@ def main():
     print(f"  Proxy:        {args.proxy or '(none)'}")
     print(f"  Cookies:      {args.cookies}")
     print(f"  Output:       {args.output}")
+    headless = not args.no_headless
+    print(f"  Headless:     {headless}")
     print("=" * 60 + "\n")
 
     results = scrape(
@@ -451,6 +458,7 @@ def main():
         proxy=args.proxy if args.proxy else None,
         cookies_path=Path(args.cookies),
         output_path=Path(args.output),
+        headless=headless,
     )
 
     print(f"\nDone. {len(results)} tweets saved.")

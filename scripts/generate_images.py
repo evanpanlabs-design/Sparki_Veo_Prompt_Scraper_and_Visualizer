@@ -45,7 +45,14 @@ from scripts.db import (
 )
 
 GCS_BUCKET = "sparki-market-test"
-DEFAULT_CONCURRENCY = 5
+DEFAULT_CONCURRENCY = 3  # intentionally conservative — rate limits are easier to hit than with text models
+
+# Available image generation models (in preference order — try first, fall back)
+IMAGE_MODELS = [
+    "gemini-3-pro-image-preview",
+    "gemini-3.1-flash-image-preview",
+    "gemini-2.5-flash-image",
+]
 
 
 # ─── Style system ─────────────────────────────────────────────────────────────
@@ -113,10 +120,10 @@ def generate_cover_image(
     local_dir: Path,
     dry_run: bool = False,
     local_only: bool = False,
-) -> tuple[int, str]:
+) -> tuple[int, str, str]:
     """
     Generate a cover image for a single prompt.
-    Returns (prompt_id, gcs_url or local_path or "dry-run").
+    Returns (prompt_id, gcs_url_or_local_path, category_path).
     """
     prompt_text = prompt["prompt_text"]
     category = prompt.get("category", "other")
@@ -129,28 +136,50 @@ def generate_cover_image(
     if dry_run:
         print(f"  [DRY RUN] prompt_id={prompt_id} title={title!r}")
         print(f"    -> {image_prompt[:120]}...")
-        return prompt_id, "dry-run"
+        return prompt_id, "dry-run", ""
 
     client = genai.Client()
 
-    # Retry on 429 Resource Exhausted with exponential backoff
-    for attempt in range(3):
-        try:
-            response = client.models.generate_content(
-                model="gemini-2.5-flash-image",
-                contents=image_prompt,
-                config=GenerateContentConfig(
-                    response_modalities=[Modality.TEXT, Modality.IMAGE],
-                ),
-            )
+    last_error = None
+    response = None
+    for model_idx, model_name in enumerate(IMAGE_MODELS):
+        for attempt in range(3):
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=image_prompt,
+                    config=GenerateContentConfig(
+                        response_modalities=[Modality.TEXT, Modality.IMAGE],
+                    ),
+                )
+                # Success — log which model worked
+                if model_idx > 0:
+                    print(f"  [-> {model_name}] prompt_id={prompt_id}")
+                break
+            except Exception as e:
+                last_error = e
+                err_str = str(e)
+                if "RESOURCE_EXHAUSTED" in err_str or "429" in err_str:
+                    if attempt < 2:
+                        wait = (attempt + 1) * 5
+                        print(f"  [!] prompt_id={prompt_id} [{model_name}] rate-limited, retrying in {wait}s...")
+                        _time.sleep(wait)
+                        continue
+                # Non-retryable error or exhausted retries — try next model
+                if "RESOURCE_EXHAUSTED" in err_str or "429" in err_str:
+                    print(f"  [!] prompt_id={prompt_id} [{model_name}] exhausted, trying next model...")
+                    break
+                else:
+                    raise  # non-429 error, let it propagate
+        else:
+            # Inner loop didn't break (all 3 attempts failed)
+            continue
+        # Outer loop breaks on successful response
+        if response is not None:
             break
-        except Exception as e:
-            if "RESOURCE_EXHAUSTED" in str(e) and attempt < 2:
-                wait = (attempt + 1) * 5
-                print(f"  [!] prompt_id={prompt_id} rate-limited, retrying in {wait}s...")
-                _time.sleep(wait)
-            else:
-                raise
+    else:
+        # All models exhausted
+        raise last_error
 
     # Extract image from response
     image_data = None
@@ -161,7 +190,7 @@ def generate_cover_image(
 
     if image_data is None:
         print(f"  [!] No image in response for prompt_id={prompt_id}")
-        return prompt_id, ""
+        return prompt_id, "", ""
 
     # Save locally — save Gemini's native output as-is
     filename = f"{prompt_id}.png"
@@ -170,14 +199,15 @@ def generate_cover_image(
     img.save(local_path, format="PNG")
 
     if local_only:
-        return prompt_id, str(local_path)
+        return prompt_id, str(local_path), ""
 
-    # Upload to GCS (production mode) — path: prompts/{prompt_id}.png
-    # DB id is globally unique (auto-increment PK), so no scrape_id prefix needed
-    gcs_blob = f"prompts/{prompt_id}.png"
+    # Upload to GCS — path: prompts/{category}/{YYYY-MM}/{scrape_id}/{prompt_id}.png
+    now_dt = datetime.now(timezone.utc)
+    yyyy_mm = now_dt.strftime("%Y-%m")
+    gcs_blob = f"prompts/{category}/{yyyy_mm}/{scrape_id}/{prompt_id}.png"
     gcs_url = upload_to_gcs(local_path, gcs_blob)
 
-    return prompt_id, gcs_url
+    return prompt_id, gcs_url, gcs_blob
 
 
 def process_batch(
@@ -186,7 +216,7 @@ def process_batch(
     concurrency: int,
     dry_run: bool,
     local_only: bool = False,
-) -> list[tuple[int, str]]:
+) -> list[tuple[int, str, str]]:
     results = []
     done = 0
     total = len(prompts)
@@ -194,7 +224,7 @@ def process_batch(
 
     def on_result(pid_result):
         nonlocal done
-        prompt_id, url = pid_result
+        prompt_id, url, cat_path = pid_result
         with lock:
             done += 1
             status = "OK" if url and url != "dry-run" else ("DRY" if url == "dry-run" else "FAIL")
@@ -212,7 +242,7 @@ def process_batch(
             except Exception as e:
                 pid = futures[fut]
                 print(f"  [!] prompt_id={pid} exception: {e}")
-                pid_result = (pid, "")
+                pid_result = (pid, "FAIL", "")
             on_result(pid_result)
             results.append(pid_result)
 
@@ -255,9 +285,9 @@ def generate_images(
 
     # Write URLs back to DB
     updated = 0
-    for prompt_id, url in results:
+    for prompt_id, url, cat_path in results:
         if url and url != "dry-run" and url != "":
-            update_prompt_image(prompt_id, url)
+            update_prompt_image(prompt_id, url, cat_path if cat_path else None)
             updated += 1
 
     print(f"\nDone. Updated {updated}/{total} prompts in DB.")
@@ -286,7 +316,7 @@ def main():
     local_dir = Path(args.output_dir) if args.output_dir else None
 
     print("=" * 60)
-    print("Phase 3 — Gemini 2.5 Flash Image Generation")
+    print("Phase 3 — Gemini Image Generation (multi-model fallback)")
     print("=" * 60)
     print(f"  Scrape ID:   {args.scrape_id or 'all'}")
     print(f"  Limit:       {args.limit or 'all'}")

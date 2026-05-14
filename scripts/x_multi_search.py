@@ -24,6 +24,7 @@ import yaml
 from playwright.sync_api import sync_playwright
 
 from db import init_db, create_scrape, insert_tweets
+from logging_utils import get_logger, step_log
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_COOKIES = PROJECT_ROOT / "outputs" / "cookies.json"
@@ -209,7 +210,7 @@ def scroll_and_extract(page, max_scrolls: int = 20, stale_threshold: int = 3) ->
                 all_tweets.append(t)
                 new_count += 1
 
-        print(f"    Scroll {i+1}/{max_scrolls} — {len(tweets)} in DOM, {new_count} new, total: {len(all_tweets)}")
+        print(f"    Scroll {i+1}/{max_scrolls} | DOM={len(tweets)} new={new_count} total={len(all_tweets)}", flush=True)
 
         if new_count == 0:
             stale_count += 1
@@ -238,6 +239,7 @@ def scrape_all(
     cookies_path: Path,
     output_path: Path,
     proxy: str | None,
+    headless: bool = True,
 ) -> list[dict]:
     cfg = load_config(config_path)
     queries = cfg.get("queries", [])
@@ -251,9 +253,13 @@ def scrape_all(
 
     proxy_config = {"server": proxy} if proxy else None
 
+    # Structured logger for Phase 1
+    log = get_logger("phase1")
+    log.info("START | config=%s queries=%d headless=%s", config_path.name, len(queries), headless)
+
     with sync_playwright() as p:
         browser = p.chromium.launch(
-            headless=False,
+            headless=headless,
             proxy=proxy_config,
             args=[
                 "--disable-blink-features=AutomationControlled",
@@ -270,41 +276,55 @@ def scrape_all(
 
         # Collect all tweets across queries, deduplicated by tweet_id
         all_tweets_map = {}   # tweet_id -> tweet dict
+        tweet_to_query = {}   # tweet_id -> source query (for per-query stats)
+        query_raw_counts = {}  # query -> count before likes filter
+        query_dedup_counts = {}  # query -> count after likes filter + dedup
 
         for query in queries:
-            print(f"\n{'='*60}")
-            print(f"Query: {query}")
-            print(f"{'='*60}")
+            print(f"\n{'='*60}", flush=True)
+            print(f"Query: {query}", flush=True)
+            print(f"{'='*60}", flush=True)
+            log.info("QUERY_START | query='%s'", query)
 
             page = context.new_page()
             search_url = f"https://x.com/search?q={query}&src=typed_query"
-            print(f"Navigating to: {search_url}")
+            log.info("NAV search | query='%s' url='%s'", query, search_url)
             page.goto(search_url, timeout=60_000)
             _time.sleep(5)
 
             try:
                 page.wait_for_selector('[data-testid="primaryColumn"]', timeout=15_000)
                 page.wait_for_selector('[data-testid="tweet"]', timeout=15_000)
+                log.info("PAGE_LOADED | query='%s' status=OK", query)
             except Exception as e:
-                print(f"  Could not load search page: {e}")
+                log.info("PAGE_LOADED | query='%s' status=FAIL error='%s'", query, e)
+                print(f"  Could not load search page: {e}", flush=True)
                 page.close()
                 continue
 
             # Scroll + extract
-            tweets = scroll_and_extract(page, max_scrolls=20, stale_threshold=3)
+            raw_tweets = scroll_and_extract(page, max_scrolls=20, stale_threshold=3)
             page.close()
 
-            # Round-1: likes filter
-            filtered = [t for t in tweets if t["favorite_count"] >= min_likes]
-            print(f"  After likes>={min_likes} filter: {len(filtered)}/{len(tweets)}")
+            query_raw_counts[query] = len(raw_tweets)
+            log.info("QUERY raw=%d tweets", len(raw_tweets))
 
-            # Add to global dedup map
-            new_total = 0
+            # Round-1: likes filter
+            filtered = [t for t in raw_tweets if t["favorite_count"] >= min_likes]
+            log.info("QUERY likes_filter | passed=%d/%d", len(filtered), len(raw_tweets))
+
+            # Add to global dedup map, track per-query
+            dedup_count = 0
             for t in filtered:
                 if t["tweet_id"] not in all_tweets_map:
                     all_tweets_map[t["tweet_id"]] = t
-                    new_total += 1
-            print(f"  Added {new_total} new tweets (total unique: {len(all_tweets_map)})")
+                    tweet_to_query[t["tweet_id"]] = query
+                    dedup_count += 1
+                else:
+                    pass
+            query_dedup_counts[query] = dedup_count
+            log.info("QUERY done | query='%s' raw=%d dedup=%d total_unique=%d",
+                     query, len(raw_tweets), dedup_count, len(all_tweets_map))
 
             rnd_delay(500, 1500)
 
@@ -322,7 +342,7 @@ def scrape_all(
     # Reuse a single browser + context for all enrichment calls (huge speedup)
     with sync_playwright() as p2:
         mini_browser = p2.chromium.launch(
-            headless=False,
+            headless=headless,
             proxy=proxy_config,
             args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
         )
@@ -333,31 +353,34 @@ def scrape_all(
 
         for i, t in enumerate(all_tweets):
             screen = t["author_screen"]
-            print(f"  [{i+1}/{len(all_tweets)}] @{screen}...", end=" ", flush=True)
+            log.info("ENRICH_START | tweet=%d/%d @%s id=%s",
+                     i + 1, len(all_tweets), screen, t["tweet_id"])
 
             followers = get_follower_count(mini_context, t["profile_url"])
-            print(f"followers={followers}", end=" | ", flush=True)
+            log.info("ENRICH followers | @%s followers=%d min=%d",
+                     screen, followers, min_followers)
 
             if min_followers > 0 and followers < min_followers:
-                print("FILTERED (followers)")
+                log.info("ENRICH FILTERED | @%s followers=%d < %d", screen, followers, min_followers)
                 rnd_delay(200, 800)
                 continue
 
             full_text, detail_views = get_tweet_detail(mini_context, t["tweet_url"])
             view_count = detail_views if detail_views > 0 else t["view_count"]
-            print(f"views={view_count}")
+            log.info("ENRICH detail | @%s views=%d text_len=%d",
+                     screen, view_count, len(full_text) if full_text else 0)
 
             if not full_text:
                 full_text = t["short_text"]
 
             # Negative keyword filter
-            # Exclude if contains negative keyword AND does NOT contain any veo-related term
             is_veo = text_contains_any(full_text, ["veo", "gemini"]) or \
                      text_contains_any(t["short_text"], ["veo", "gemini"])
             has_negative = text_contains_any(full_text, negative_keywords)
 
             if has_negative and not is_veo:
-                print(f"  FILTERED (negative keyword: {negative_keywords})")
+                neg_kw = [kw for kw in negative_keywords if kw.lower() in full_text.lower()]
+                log.info("ENRICH FILTERED | @%s negative=%s", screen, neg_kw)
                 rnd_delay(200, 800)
                 continue
 
@@ -379,11 +402,14 @@ def scrape_all(
                 },
             }
             enriched.append(tweet_data)
+            log.info("ENRICH PASSED | @%s likes=%d followers=%d views=%d",
+                     screen, t["favorite_count"], followers, view_count)
             rnd_delay(200, 1000)
 
         mini_browser.close()
 
-    print(f"\nTotal tweets after all filters: {len(enriched)}")
+    log.info("PHASE1_END | total_enriched=%d queries=%d", len(enriched), len(queries))
+    print(f"\nTotal tweets after all filters: {len(enriched)}", flush=True)
 
     # Save
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -401,6 +427,15 @@ def scrape_all(
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(result_data, f, ensure_ascii=False, indent=2)
 
+    # Build query_stats before writing to DB
+    query_stats = {}
+    for query in queries:
+        query_stats[query] = {
+            "raw": query_raw_counts.get(query, 0),
+            "dedup": query_dedup_counts.get(query, 0),
+            "prompts": 0,  # filled in by Phase 2
+        }
+
     # Write to SQLite database
     init_db()
     config_yaml = config_path.read_text(encoding="utf-8")
@@ -409,11 +444,27 @@ def scrape_all(
         config_yaml=config_yaml,
         total_raw=len(enriched),
         total_dedup=len(enriched),
+        query_stats=query_stats,
     )
-    insert_tweets(scrape_id, enriched)
+    log.info("DB_WRITE | scrape_id=%d tweets=%d", scrape_id, len(enriched))
 
-    print(f"Saved to {output_path}")
-    print(f"Written to database: scrape_id={scrape_id}")
+    # Group enriched tweets by source query (from tweet_to_query map)
+    tweets_by_query = {}
+    for t in enriched:
+        q = tweet_to_query.get(t["tweet_id"], None)
+        if q not in tweets_by_query:
+            tweets_by_query[q] = []
+        tweets_by_query[q].append(t)
+
+    for query, tweets_list in tweets_by_query.items():
+        insert_tweets(scrape_id, tweets_list, source_query=query)
+
+    for query, tweets_list in tweets_by_query.items():
+        log.info("DB_TWEETS | query='%s' count=%d", query, len(tweets_list))
+
+    log.info("COMPLETE | output=%s scrape_id=%d tweets=%d", output_path, scrape_id, len(enriched))
+    print(f"Saved to {output_path}", flush=True)
+    print(f"Written to database: scrape_id={scrape_id}, query_stats={query_stats}", flush=True)
     return enriched
 
 
@@ -429,6 +480,10 @@ def main():
                         help="Output JSON path")
     parser.add_argument("--proxy",    type=str, default=DEFAULT_PROXY,
                         help=f"HTTP proxy (default: {DEFAULT_PROXY}, '' to disable)")
+    parser.add_argument("--headless",  action="store_true", default=True,
+                        help="Run browser in headless mode (default, use --no-headless for visible)")
+    parser.add_argument("--no-headless", action="store_true",
+                        help="Force visible browser for debugging")
     args = parser.parse_args()
 
     config_path = PROJECT_ROOT / args.config
@@ -442,6 +497,8 @@ def main():
     print(f"  Cookies:   {cookies_path}")
     print(f"  Output:    {output_path}")
     print(f"  Proxy:     {args.proxy or '(none)'}")
+    headless = not args.no_headless  # default True (headless)
+    print(f"  Headless:  {headless}")
     print("=" * 60 + "\n")
 
     scrape_all(
@@ -449,6 +506,7 @@ def main():
         cookies_path=cookies_path,
         output_path=output_path,
         proxy=args.proxy if args.proxy else None,
+        headless=headless,
     )
 
 

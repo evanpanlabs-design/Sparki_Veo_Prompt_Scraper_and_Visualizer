@@ -4,7 +4,7 @@ description: >
   Search X/Twitter for Veo/AI video generation prompts across multiple related queries,
   filter by engagement and author quality, exclude competing model mentions (unless Veo is present),
   extract structured generation Prompts via LLM, generate a cover image for each prompt via
-  Gemini 2.5 Flash Image (Vertex AI), upload to GCS, output a curated prompt list with image URLs.
+  Gemini 3.1 Flash Image Preview (Vertex AI), upload to GCS, output a curated prompt list with image URLs.
 trigger-phrases:
   - "scrape X prompts"
   - "find veo prompts"
@@ -22,7 +22,7 @@ A three-phase pipeline that scrapes X/Twitter for AI generation prompts, extract
 
 **Phase 1** — Multi-query scrape: runs multiple searches, deduplicates, filters by engagement and author quality.
 **Phase 2** — LLM extraction: classifies each tweet as a usable Prompt or general commentary, extracts the prompt text, title, and category.
-**Phase 3** — Image generation: generates a cover image for each extracted prompt using Gemini 2.5 Flash Image via Vertex AI, uploads to GCS, writes URL back to DB.
+**Phase 3** — Image generation: generates a cover image for each extracted prompt using Gemini 3.1 Flash Image Preview via Vertex AI, uploads to GCS, writes URL back to DB.
 
 ## When to Use
 
@@ -35,14 +35,16 @@ A three-phase pipeline that scrapes X/Twitter for AI generation prompts, extract
 
 ### 0. Configure API Key (Required before Phase 2)
 
-Create a `.env` file in the project root:
+When running the pipeline (`python scripts/run_pipeline.py`), credentials are checked automatically:
+
+1. **API key**: If `OPENAI_API_KEY` is missing or is a placeholder, the script pauses and asks you to paste your MiniMax API key, then saves it to `.env`.
+2. **X cookies**: If `outputs/cookies.json` is missing or older than 7 days, the script asks for your X username/password and runs `browser_auth.py` to re-authenticate.
+
+For manual setup, create a `.env` file in the project root:
 
 ```bash
-# 1. Copy the example
+# Copy the example
 cp .env.example .env
-
-# 2. Edit with your MiniMax credentials
-#    Get your API key from https://platform.minimaxi.com
 ```
 
 Then edit `.env`:
@@ -222,24 +224,24 @@ python scripts/extract_prompts.py --input outputs/raw_tweets.json --output outpu
 
 ## Phase 3 — Cover Image Generation
 
-Generates a cover image for each extracted prompt using **Gemini 2.5 Flash Image** via Vertex AI. Images are resized to **2752×1536 px** (16:9) and uploaded to GCS.
+Generates a cover image for each extracted prompt using **Gemini 3.1 Flash Image Preview** via Vertex AI. Images are saved at their native resolution and uploaded to GCS.
 
 ### Image Prompt Strategy
 
 The system builds a category-aware image prompt:
 - Injects **3 random style keywords** from the category's keyword pool
-- Guides aspect ratio per category: cinematic→21:9, character→2:3, product→3:2, image→1:1, video→16:9
 - Tells Gemini to generate a "cover image" matching the prompt
-- **Output is always resized to 2752×1536 px** after generation
+- **Output is saved at Gemini's native resolution (1024×1024)** — no forced resize
+- Main subject is guided to the center of the image
 
-| Category | Aspect Ratio | Style Keywords (sample) |
-|----------|-------------|------------------------|
-| `cinematic` | 21:9 | film grain, anamorphic, f-stop, lens flare |
-| `character-design` | 2:3 | character sheet, turnaround, expression sheet |
-| `product-photography` | 3:2 | product shot, studio lighting, white background |
-| `image-generation` | 1:1 | detailed illustration, 8k, masterpiece |
-| `video-generation` | 16:9 | motion blur, dynamic pose, film still |
-| `other` | 16:9 | high quality, vibrant colors |
+| Category | Style Keywords (sample) |
+|----------|------------------------|
+| `cinematic` | film grain, anamorphic, f-stop, lens flare |
+| `character-design` | character sheet, turnaround, expression sheet |
+| `product-photography` | product shot, studio lighting, white background |
+| `image-generation` | detailed illustration, 8k, masterpiece |
+| `video-generation` | motion blur, dynamic pose, film still |
+| `other` | high quality, vibrant colors |
 
 ### Run Phase 3
 
@@ -259,13 +261,22 @@ python scripts/generate_images.py --scrape-id 1 --concurrency 1
 
 ### GCS Output Path
 
+Images are stored at `gs://sparki-market-test/prompts/{category}/{YYYY-MM}/{scrape_id}/{prompt_id}.png`.
+
 ```
-gs://sparki-market-test/prompts/{prompt_id}.png
+gs://sparki-market-test/
+  prompts/
+    {category}/           e.g. video-generation/, cinematic/
+      {YYYY-MM}/         e.g. 2026-05/
+        {scrape_id}/     e.g. 1/
+          {prompt_id}.png  e.g. 42.png
 ```
 
-Example: `gs://sparki-market-test/prompts/42.png`
+Examples:
+- `gs://sparki-market-test/prompts/video-generation/2026-05/1/42.png`
+- `gs://sparki-market-test/prompts/cinematic/2026-05/1/3.png`
 
-> The prompt `id` is a global auto-increment primary key — unique across all scrapes. One prompt always equals one image, no collisions.
+The `category_path` column in the `prompts` table stores the relative path (e.g. `video-generation/2026-05/1/42.png`) for display purposes.
 
 ---
 
@@ -278,7 +289,7 @@ python scripts/x_multi_search.py
 # Phase 2: extract prompts via LLM
 python scripts/extract_prompts.py --scrape-id 1
 
-# Phase 3: generate cover images via Gemini 2.5 Flash Image
+# Phase 3: generate cover images via Gemini 3.1 Flash Image Preview
 python scripts/generate_images.py --scrape-id 1
 ```
 
@@ -319,10 +330,10 @@ CREATE TABLE tweets (
 -- Phase 2 output: extracted prompts
 CREATE TABLE prompts (
     id               INTEGER PRIMARY KEY,
-    tweet_id         TEXT,
+    tweet_id         TEXT UNIQUE,     -- one prompt per tweet
     scrape_id        INTEGER,
     url              TEXT,
-    category         TEXT,          -- approved category name
+    category         TEXT,           -- approved category name
     title            TEXT,
     prompt_text      TEXT,
     notes            TEXT,
@@ -334,8 +345,9 @@ CREATE TABLE prompts (
     reply_count      INTEGER DEFAULT 0,
     view_count       INTEGER DEFAULT 0,
     extracted_at     TEXT,
-    image_gcs_url    TEXT,          -- Phase 3: gs:// URL after image generation
-    image_generated_at TEXT         -- Phase 3: timestamp
+    image_gcs_url    TEXT,           -- Phase 3: gs:// URL after image generation
+    image_generated_at TEXT,         -- Phase 3: timestamp
+    category_path    TEXT            -- Phase 3: GCS relative path e.g. video-generation/2026-05/1/42.png
 );
 
 -- Approved category definitions

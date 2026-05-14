@@ -22,3 +22,6 @@ outputs/*.json
 # OS
 .DS_Store
 Thumbs.db
+data/*.db
+data/
+.env

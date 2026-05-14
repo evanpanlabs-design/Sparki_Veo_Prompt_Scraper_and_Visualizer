@@ -36,12 +36,29 @@ from scripts.db import (
     reject_suggestion,
     insert_prompts,
     get_recent_tweets,
+    get_tweets_without_prompts,
+    update_scrape_query_stats,
+    get_scrape_query_stats,
+    count_prompts_for_scrape,
+    get_prompts_for_scrape_by_query,
 )
 
 DEFAULT_INPUT = PROJECT_ROOT / "outputs" / "raw_tweets.json"
 DEFAULT_OUTPUT = PROJECT_ROOT / "outputs" / "prompts.json"
 DEFAULT_MODEL = "MiniMax-M2.7"
 DEFAULT_CONCURRENCY = 15
+
+# Keywords that suggest a prompt is embedded in the tweet text
+PROMPT_INDICATORS = [
+    "prompt:", "\nPrompt ", "\"prompt\":", "prompt_details",
+    "见评论", "评论区", "prompt in", "prompt below",
+]
+
+
+def should_recheck(text: str) -> bool:
+    """Return True if tweet text contains prompt indicators that warrant a second review."""
+    t = text.lower()
+    return any(kw in t for kw in PROMPT_INDICATORS)
 
 
 def build_system_prompt(categories: list[dict]) -> str:
@@ -97,6 +114,28 @@ def call_llm(
         return None
 
 
+def recheck_tweet(tweet: dict, api_base: str, api_key: str, model: str) -> Optional[dict]:
+    """
+    Second-pass review for tweets that were flagged as 'not a prompt' but contain
+    prompt indicators (e.g., 'Prompt:', '见评论', etc.).
+
+    Strict: only returns a result if the tweet itself contains a usable Veo prompt.
+    If the tweet just references 'prompt in comments' without providing content, returns None.
+    """
+    RECHECK_PROMPT = (
+        "You are a Veo video generation prompt reviewer.\n"
+        "A tweet was initially flagged as not containing a prompt.\n"
+        "However, the tweet text contains keywords that suggest a prompt may be present.\n\n"
+        "IMPORTANT: Be STRICT. Only return JSON if the tweet ITSELF contains a complete,\n"
+        "directly usable prompt for Veo/Gemini video generation.\n"
+        "If the tweet only says 'prompt in comments', 'see reply', 'prompt below',\n"
+        "or references a prompt elsewhere without giving the content — return null.\n\n"
+        'Reply with: {"is_prompt": true/false, "category": "...", "title": "...", '
+        '"prompt_text": "...", "notes": "..."} or null.'
+    )
+    return call_llm(tweet.get("text", ""), api_base, api_key, model, RECHECK_PROMPT)
+
+
 def process_tweet(
     tweet: dict,
     api_base: str,
@@ -105,10 +144,15 @@ def process_tweet(
     system_prompt: str,
 ) -> tuple[dict, bool, Optional[dict]]:
     """Returns (prompt_dict, was_extracted, category_suggestion_or_None)."""
-    result = call_llm(tweet.get("text", ""), api_base, api_key, model, system_prompt)
+    text = tweet.get("text", "")
+    result = call_llm(text, api_base, api_key, model, system_prompt)
 
+    # If LLM said not a prompt, check if recheck is warranted
     if result is None or not result.get("is_prompt", False):
-        return None, False, None
+        if should_recheck(text):
+            result = recheck_tweet(tweet, api_base, api_key, model)
+        if result is None or not result.get("is_prompt", False):
+            return None, False, None
 
     category = result.get("category", "other")
     prompt_dict = {
@@ -183,7 +227,7 @@ def handle_new_categories(
 
     for cat_name, cat_prompts in grouped.items():
         sample = cat_prompts[0]
-        print(f"\n⚠️  New category detected: '{cat_name}'")
+        print(f"\n[NEW]  New category detected: '{cat_name}'")
         print(f"   Sample prompt: {sample.get('prompt_text','')[:100]}...")
         print(f"   From: @{sample.get('author',{}).get('screen_name','?')}")
         print(f"   Total tweets with this category: {len(cat_prompts)}")
@@ -201,7 +245,7 @@ def handle_new_categories(
                 prompt_text=sample.get("prompt_text", ""),
                 suggested_by=model,
             ))
-            print(f"  ✓ Category '{cat_name}' added.")
+            print(f"  [OK] Category '{cat_name}' added.")
         elif choice == "r":
             new_name = input(f"  New category name: ").strip()
             if new_name:
@@ -216,7 +260,7 @@ def handle_new_categories(
                 for p in cat_prompts:
                     p["category"] = new_name
         else:
-            print(f"  ✗ Category '{cat_name}' rejected — tweets will use 'other'.")
+            print(f"  [REJECTED] Category '{cat_name}' rejected — tweets will use 'other'.")
             for p in cat_prompts:
                 p["category"] = "other"
 
@@ -237,7 +281,7 @@ def extract_prompts(
     # Check pending suggestions first
     pending = get_pending_suggestions()
     if pending:
-        print(f"\n⚠️  {len(pending)} pending category suggestion(s) in DB:")
+        print(f"\n[WARN] {len(pending)} pending category suggestion(s) in DB:")
         for s in pending:
             print(f"  [{s['id']}] '{s['suggested_name']}' — {s['reason'][:80]}...")
         print("\nReview them before continuing? [y] to review, [Enter] to skip:")
@@ -250,21 +294,21 @@ def extract_prompts(
                 c = input("> ").strip().lower()
                 if c == "a":
                     approve_suggestion(s["id"])
-                    print("  ✓ Approved")
+                    print("  [OK] Approved")
                 elif c == "r":
                     reject_suggestion(s["id"])
-                    print("  ✗ Rejected")
+                    print("  [REJECTED] Rejected")
                 else:
                     print("  Skipped")
             print()
 
-    # Load tweets from DB or JSON file
+    # Load tweets from DB — incremental: only tweets without a prompt entry
     if input_path and input_path.exists():
         with open(input_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         tweets = data.get("tweets", [])
     else:
-        tweets = get_recent_tweets(limit=500)
+        tweets = get_tweets_without_prompts()
         if scrape_id is not None:
             from scripts.db import get_tweets_for_scrape
             tweets = get_tweets_for_scrape(scrape_id)
@@ -327,6 +371,24 @@ def extract_prompts(
     # Save to DB
     db_scrape_id = scrape_id if scrape_id else 1  # default scrape if none
     insert_prompts(db_scrape_id, prompts)
+
+    # Backfill prompt counts into query_stats
+    if db_scrape_id:
+        try:
+            query_stats = get_scrape_query_stats(db_scrape_id)
+            if query_stats:
+                # Count prompts by source query
+                prompts_by_query = get_prompts_for_scrape_by_query(db_scrape_id)
+                updated = False
+                for q, cnt in prompts_by_query.items():
+                    if q in query_stats:
+                        query_stats[q]["prompts"] = cnt
+                        updated = True
+                if updated:
+                    update_scrape_query_stats(db_scrape_id, query_stats)
+                    print(f"  Updated query_stats with prompt counts: {prompts_by_query}")
+        except Exception as e:
+            print(f"  Could not update query_stats: {e}")
 
     print(f"\nExtracted {len(prompts)} prompts from {total} tweets")
 

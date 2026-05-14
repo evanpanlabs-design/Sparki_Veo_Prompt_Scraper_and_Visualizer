@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS tweets (
 
 CREATE TABLE IF NOT EXISTS prompts (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
-    tweet_id         TEXT NOT NULL,
+    tweet_id         TEXT NOT NULL UNIQUE,
     scrape_id        INTEGER NOT NULL,
     url              TEXT NOT NULL,
     category         TEXT NOT NULL,
@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS prompts (
     extracted_at     TEXT NOT NULL,
     image_gcs_url    TEXT,
     image_generated_at TEXT,
+    category_path    TEXT,
     FOREIGN KEY (scrape_id) REFERENCES scrapes(id)
 );
 
@@ -113,6 +114,8 @@ def init_db():
     conn = _conn()
     conn.executescript(SCHEMA)
     _migrate_prompts_image_cols(conn)
+    _migrate_scrape_query_stats(conn)
+    _migrate_tweets_source_query(conn)
     now = datetime.now(timezone.utc).isoformat()
     for name, description in DEFAULT_CATEGORIES:
         conn.execute("""
@@ -132,6 +135,26 @@ def _migrate_prompts_image_cols(conn: sqlite3.Connection):
         conn.execute("ALTER TABLE prompts ADD COLUMN image_generated_at TEXT")
     except sqlite3.OperationalError:
         pass  # column already exists
+    try:
+        conn.execute("ALTER TABLE prompts ADD COLUMN category_path TEXT")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+
+
+def _migrate_scrape_query_stats(conn: sqlite3.Connection):
+    """Add query_stats column to scrapes if it doesn't exist."""
+    try:
+        conn.execute("ALTER TABLE scrapes ADD COLUMN query_stats TEXT")
+    except sqlite3.OperationalError:
+        pass  # column already exists
+
+
+def _migrate_tweets_source_query(conn: sqlite3.Connection):
+    """Add source_query column to tweets if it doesn't exist."""
+    try:
+        conn.execute("ALTER TABLE tweets ADD COLUMN source_query TEXT")
+    except sqlite3.OperationalError:
+        pass  # column already exists
 
 
 def close():
@@ -143,15 +166,34 @@ def close():
 
 # ─── Scrapes ──────────────────────────────────────────────────────────────────
 
-def create_scrape(queries: list[str], config_yaml: str, total_raw: int, total_dedup: int) -> int:
+def create_scrape(queries: list[str], config_yaml: str, total_raw: int, total_dedup: int,
+                  query_stats: dict = None) -> int:
     conn = _conn()
     now = datetime.now(timezone.utc).isoformat()
     cur = conn.execute("""
-        INSERT INTO scrapes (scrape_time, queries, config_yaml, total_raw, total_dedup)
-        VALUES (?, ?, ?, ?, ?)
-    """, (now, json.dumps(queries, ensure_ascii=False), config_yaml, total_raw, total_dedup))
+        INSERT INTO scrapes (scrape_time, queries, config_yaml, total_raw, total_dedup, query_stats)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (now, json.dumps(queries, ensure_ascii=False), config_yaml, total_raw, total_dedup,
+          json.dumps(query_stats or {}, ensure_ascii=False)))
     conn.commit()
     return cur.lastrowid
+
+
+def update_scrape_query_stats(scrape_id: int, query_stats: dict):
+    """Update the query_stats JSON for a scrape (e.g. after Phase 2 fills in prompt counts)."""
+    _conn().execute(
+        "UPDATE scrapes SET query_stats = ? WHERE id = ?",
+        (json.dumps(query_stats, ensure_ascii=False), scrape_id)
+    )
+    _conn().commit()
+
+
+def get_scrape_query_stats(scrape_id: int) -> dict:
+    """Get query_stats dict for a scrape, or empty dict if none."""
+    row = _conn().execute(
+        "SELECT query_stats FROM scrapes WHERE id = ?", (scrape_id,)
+    ).fetchone()
+    return json.loads(row[0]) if row and row[0] else {}
 
 
 def get_all_scrapes() -> list[dict]:
@@ -161,16 +203,16 @@ def get_all_scrapes() -> list[dict]:
 
 # ─── Tweets ────────────────────────────────────────────────────────────────────
 
-def insert_tweets(scrape_id: int, tweets: list[dict]):
-    """Insert tweets, skip duplicates (tweet_id UNIQUE)."""
+def insert_tweets(scrape_id: int, tweets: list[dict], source_query: str = None):
+    """Insert tweets, skip duplicates (tweet_id UNIQUE). Optionally tag with source_query."""
     conn = _conn()
     for t in tweets:
         conn.execute("""
             INSERT OR IGNORE INTO tweets
               (scrape_id, tweet_id, url, text, created_at,
                favorite_count, retweet_count, reply_count, view_count,
-               author_name, author_screen, followers_count)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               author_name, author_screen, followers_count, source_query)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             scrape_id,
             t["tweet_id"],
@@ -184,6 +226,7 @@ def insert_tweets(scrape_id: int, tweets: list[dict]):
             t.get("author", {}).get("name", ""),
             t.get("author", {}).get("screen_name", ""),
             t.get("author", {}).get("followers_count", 0),
+            source_query,
         ))
     conn.commit()
 
@@ -203,6 +246,22 @@ def get_recent_tweets(limit: int = 500) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def get_tweets_without_prompts(limit: int = None) -> list[dict]:
+    """Get tweets that have not yet been extracted into prompts (incremental Phase 2)."""
+    sql = """
+        SELECT t.* FROM tweets t
+        LEFT JOIN prompts p ON t.tweet_id = p.tweet_id
+        WHERE p.id IS NULL
+        ORDER BY t.id DESC
+    """
+    params = []
+    if limit is not None:
+        sql += " LIMIT ?"
+        params.append(limit)
+    rows = _conn().execute(sql, params).fetchall()
+    return [dict(r) for r in rows]
+
+
 # ─── Prompts ──────────────────────────────────────────────────────────────────
 
 def insert_prompts(scrape_id: int, prompts: list[dict]):
@@ -210,7 +269,7 @@ def insert_prompts(scrape_id: int, prompts: list[dict]):
     conn = _conn()
     for p in prompts:
         conn.execute("""
-            INSERT INTO prompts
+            INSERT OR IGNORE INTO prompts
               (tweet_id, scrape_id, url, category, title, prompt_text, notes,
                author_name, author_screen, followers_count,
                likes_count, retweet_count, reply_count, view_count, extracted_at)
@@ -249,6 +308,26 @@ def get_all_prompts(limit: int = 500) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def count_prompts_for_scrape(scrape_id: int) -> int:
+    """Count total prompts for a given scrape."""
+    row = _conn().execute(
+        "SELECT COUNT(*) FROM prompts WHERE scrape_id = ?", (scrape_id,)
+    ).fetchone()
+    return row[0] if row else 0
+
+
+def get_prompts_for_scrape_by_query(scrape_id: int) -> dict[str, int]:
+    """Return prompt counts grouped by source_query for a scrape."""
+    rows = _conn().execute("""
+        SELECT t.source_query, COUNT(p.id) as cnt
+        FROM prompts p
+        JOIN tweets t ON p.tweet_id = t.tweet_id
+        WHERE p.scrape_id = ?
+        GROUP BY t.source_query
+    """, (scrape_id,)).fetchall()
+    return {r[0] or "_unknown": r[1] for r in rows}
+
+
 def get_prompts_without_images(scrape_id: int = None, limit: int = None) -> list[dict]:
     """Get prompts that haven't had images generated yet."""
     sql = "SELECT * FROM prompts WHERE image_gcs_url IS NULL"
@@ -264,14 +343,23 @@ def get_prompts_without_images(scrape_id: int = None, limit: int = None) -> list
     return [dict(r) for r in rows]
 
 
-def update_prompt_image(prompt_id: int, gcs_url: str):
-    """Update a prompt with its generated image GCS URL."""
+def update_prompt_image(prompt_id: int, gcs_url: str, category_path: str = None):
+    """Update a prompt with its generated image GCS URL and category path."""
     now = datetime.now(timezone.utc).isoformat()
     _conn().execute(
-        "UPDATE prompts SET image_gcs_url = ?, image_generated_at = ? WHERE id = ?",
-        (gcs_url, now, prompt_id)
+        "UPDATE prompts SET image_gcs_url = ?, image_generated_at = ?, "
+        "category_path = COALESCE(?, category_path) WHERE id = ?",
+        (gcs_url, now, category_path, prompt_id)
     )
     _conn().commit()
+
+
+def get_latest_scrape_id_for_prompt(prompt_id: int) -> int:
+    """Get scrape_id for a prompt by its ID."""
+    row = _conn().execute(
+        "SELECT scrape_id FROM prompts WHERE id = ?", (prompt_id,)
+    ).fetchone()
+    return row[0] if row else None
 
 
 # ─── Categories ───────────────────────────────────────────────────────────────

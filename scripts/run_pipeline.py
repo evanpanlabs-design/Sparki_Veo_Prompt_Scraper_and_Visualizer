@@ -33,6 +33,100 @@ from scripts.db import (
     _conn,
 )
 
+# Path to .env
+ENV_PATH = PROJECT_ROOT / ".env"
+
+
+def _read_env() -> dict:
+    env = {}
+    if ENV_PATH.exists():
+        for line in ENV_PATH.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if "=" in line and not line.startswith("#"):
+                k, v = line.split("=", 1)
+                env[k.strip()] = v.strip()
+    return env
+
+
+def _write_env(patch: dict):
+    existing = _read_env()
+    existing.update(patch)
+    lines = [f"{k}={v}" for k, v in sorted(existing.items())]
+    ENV_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def ensure_credentials() -> bool:
+    """
+    Check and bootstrap missing credentials before running pipeline.
+    Returns True if all credentials are ready, False if user bailed.
+    """
+    print("\n[Credential Check]")
+
+    # ── 1. API Key ────────────────────────────────────────────────────────────
+    env = _read_env()
+    api_key = env.get("OPENAI_API_KEY", "").strip()
+    placeholder_keys = ("", "your-api-key-here", "sk-...xx")
+    if not api_key or api_key in placeholder_keys:
+        print("  OPENAI_API_KEY is missing or is a placeholder.")
+        try:
+            new_key = input("  Paste your MiniMax API key: ").strip()
+        except EOFError:
+            print("  Aborted.")
+            return False
+        if new_key and new_key not in placeholder_keys:
+            _write_env({"OPENAI_API_KEY": new_key})
+            print("  [OK] API key saved to .env")
+            # Reload so subsequent code picks it up
+            from dotenv import load_dotenv
+            load_dotenv(override=True)
+            api_key = new_key
+        else:
+            print("  Invalid key — cannot continue without API key.")
+            return False
+
+    # ── 2. X Cookies ──────────────────────────────────────────────────────────
+    cookies_path = PROJECT_ROOT / "outputs" / "cookies.json"
+    if not cookies_path.exists():
+        print("  cookies.json not found — X authentication required.")
+        return _ensure_x_cookies()
+    import time
+    age_days = (time.time() - cookies_path.stat().st_mtime) / 86400
+    if age_days > 7:
+        print(f"  cookies.json is {age_days:.1f} days old — re-authentication required.")
+        return _ensure_x_cookies()
+
+    print("  [OK] All credentials OK")
+    return True
+
+
+def _ensure_x_cookies() -> bool:
+    """Interactive: get X username/password and run browser_auth.py."""
+    try:
+        username = input("  X username (email or phone): ").strip()
+        password = input("  X password: ").strip()
+    except EOFError:
+        print("  Aborted.")
+        return False
+    if not username or not password:
+        print("  Username and password required.")
+        return False
+
+    print(f"  Launching browser to authenticate @{username}...")
+    script = PROJECT_ROOT / "scripts" / "browser_auth.py"
+    result = subprocess.run(
+        [sys.executable, str(script), "--username", username, "--password", password],
+        capture_output=True, text=True,
+        env={**os.environ, "PYTHONPATH": str(PROJECT_ROOT)},
+    )
+    if result.returncode == 0:
+        print("  [OK] X authentication successful")
+        return True
+    else:
+        print(f"  [FAIL] X authentication failed (exit {result.returncode})")
+        if result.stdout:
+            print(result.stdout[:500])
+        return False
+
 
 # ─── Login status ─────────────────────────────────────────────────────────────
 
@@ -203,6 +297,11 @@ def main():
 
     if args.dry_run:
         dry_run_report(phase)
+        return
+
+    # ── Credential bootstrap ─────────────────────────────────────────────────
+    if not ensure_credentials():
+        print("\nCredential bootstrap failed — aborting pipeline.")
         return
 
     # ── Phase 1 ───────────────────────────────────────────────────────────
