@@ -210,29 +210,40 @@ def build_html(output_path: Path, scrape_id: int = None,
             sys.exit(1)
         print(f"  [{err_count} errors] validation passed")
 
-    template_path = PROJECT_ROOT / "outputs" / "veo3-prompt-library.html"
+    template_path = PROJECT_ROOT / "outputs" / "templates" / "veo3-prompt-library.html"
     if not template_path.exists():
-        print(f"ERROR: template not found at {template_path}")
-        sys.exit(1)
+        template_path = PROJECT_ROOT / "outputs" / "veo3-prompt-library.html"  # fallback
+        if not template_path.exists():
+            print(f"ERROR: template not found at {template_path}")
+            sys.exit(1)
+        print(f"WARNING: using outputs/veo3-prompt-library.html as template (may be corrupted)")
 
     html = load_template(template_path)
 
-    old_marker = "const prompts = ["
-    old_start_idx = html.find(old_marker)
-    if old_start_idx == -1:
+    old_marker = "// PROMPTS_ARRAY_SENTINEL"
+    if old_marker not in html:
+        print("ERROR: could not find '// PROMPTS_ARRAY_SENTINEL' in template")
+        print("  The template's prompts array closing bracket must be followed by:")
+        print("    ] // PROMPTS_ARRAY_SENTINEL")
+        print("  Run: python -c \"(add sentinel to template)\"")
+        sys.exit(1)
+
+    new_array = prompts_to_js_array(prompts)
+
+    # arr_start = position of "const" in "const prompts = ["
+    # arr_end   = position of "]" that immediately precedes the sentinel comment
+    arr_start = html.find("const prompts = [")
+    sentinel_pos = html.find(old_marker)
+    arr_end = sentinel_pos - 1  # the ] just before the sentinel
+
+    if arr_start == -1:
         print("ERROR: could not find 'const prompts = [' in template")
         sys.exit(1)
 
-    depth = 0
-    for i, c in enumerate(html[old_start_idx:], old_start_idx):
-        if c == '[': depth += 1
-        elif c == ']': depth -= 1
-        if depth == 0:
-            old_end_idx = i
-            break
+    # new_array already includes the outer [ and ] brackets
+    new_array_block = f"const prompts = {new_array};"
 
-    new_array = prompts_to_js_array(prompts)
-    new_html = (html[:old_start_idx] + f"const prompts = {new_array}" + html[old_end_idx + 1:])
+    new_html = html[:arr_start] + new_array_block + html[sentinel_pos + len(old_marker) + 1:]
 
     new_html = new_html.replace(
         "Last updated: 2026-01-27",
