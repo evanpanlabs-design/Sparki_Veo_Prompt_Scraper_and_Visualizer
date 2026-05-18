@@ -199,6 +199,13 @@ def build_html(output_path: Path, scrape_id: int = None,
 
     print(f"Loaded {len(prompts)} prompts from DB (scrape_id={scrape_id or 'all'})")
 
+    # Filter out prompts with placeholder/extraction-failed prompt_text
+    PLACEHOLDER_TEXTS = {"...", "[the full prompt text]", ""}
+    before = len(prompts)
+    prompts = [p for p in prompts if p["prompt_text"] not in PLACEHOLDER_TEXTS]
+    removed = before - len(prompts)
+    if removed > 0:
+        print(f"  [{removed}] prompts skipped (placeholder prompt_text)")
     # Validate
     if validate and local_img_dir:
         err_count, err_msgs = validate_prompts(prompts, local_img_dir)

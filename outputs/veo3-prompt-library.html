@@ -527,34 +527,29 @@
             overflow: hidden;
         }
 
-        .prompt-meta {
-            display: flex;
-            gap: 10px;
-            font-size: 10px;
-            color: var(--text-tertiary);
-            padding-top: 8px;
-            border-top: 1px solid var(--border);
-        }
-
         .meta-item {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 5px;
+            font-size: 11px;
+            color: var(--text-tertiary);
+            justify-content: flex-end;
         }
 
         .view-more-btn {
             display: block;
             width: 100%;
-            padding: 5px;
+            padding: 6px;
             margin-top: 6px;
             border: 1px solid var(--border);
             background: white;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 500;
             color: var(--text-secondary);
             cursor: pointer;
             border-radius: 6px;
             transition: all 0.15s;
+            text-align: center;
         }
 
         .view-more-btn:hover {
@@ -566,20 +561,93 @@
             padding: 10px 14px;
             background: white;
             display: flex;
-            gap: 10px;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .author-row {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .author-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+            padding-top: 1px;
+        }
+
+        .author-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+        }
+
+        .author-divider {
+            width: 1px;
+            align-self: stretch;
+            background: var(--text-tertiary);
+            opacity: 0.3;
+            flex-shrink: 0;
+        }
+
+        .author-stats-row1 {
+            display: flex;
+            gap: 12px;
+        }
+
+        .author-stats-row2 {
+            display: flex;
+        }
+
+        .author-name {
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+
+        .author-handle {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            line-height: 1.2;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: var(--text-tertiary);
+        }
+
+        .followers-item {
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--text-tertiary);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
         }
 
         .btn {
             flex: 1;
-            padding: 6px 10px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-size: 13px;
-            font-weight: 500;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.15s;
             text-align: center;
             text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         #search-input:focus {
@@ -610,7 +678,6 @@
             border: 2px solid var(--accent);
             color: white;
             font-weight: 600;
-            flex: 1;
         }
 
         .btn-primary:hover {
@@ -621,7 +688,8 @@
 
         .btn-share {
             width: 40px;
-            height: 40px;
+            min-width: 40px;
+            height: 36px;
             padding: 0;
             background: white;
             border: 2px solid var(--border);
@@ -1093,7 +1161,20 @@
                 {"id":27,"tweet_id":"2006584693555429448","url":"https://x.com/iamrealsnow/status/2006584693555429448","category":"video-generation","title":"Snowy City New Year 2026","prompt_text":"Snowy city street at night, New Year 2026 fireworks, cozy lights, magical winter atmosphere, cinematic, 8K","notes":"Created with Veo 3 in Gemini App","author":{"name":"Snow","screen_name":"iamrealsnow","followers":4979},"engagement":{"likes":52,"retweets":0,"replies":38}},
                 {"id":28,"tweet_id":"2011081765419639037","url":"https://x.com/iamrealsnow/status/2011081765419639037","category":"video-generation","title":"Arctic Eagle Cinematic Video","prompt_text":"Cinematic ultra realistic video set in a vast Arctic snowy landscape. A lone figure stands in deep snow wearing a flowing winter cloak. A majestic bald eagle is the companion, perched on the arm at first, then taking flight and circling gracefully. Slow camera push in, wide establishing shot to medium close up. Snow falls gently, icy wind moves the cloak and feathers. Cold blue and white color grading, dramatic natural light, sharp feather detail, powerful yet calm mood, shallow depth of field, high realism, 4K, smooth motion, epic atmosphere","notes":"Created with Veo 3 in Gemini app","author":{"name":"Snow","screen_name":"iamrealsnow","followers":4979},"engagement":{"likes":51,"retweets":0,"replies":32}},
                 {"id":29,"tweet_id":"2012851915017826758","url":"https://x.com/AIwithkhan/status/2012851915017826758","category":"video-generation","title":"Coca-Cola Time Freeze Pour","prompt_text":"Coca-Cola Time Freeze Pour\nbase_style: \"ultra-cinematic, photorealistic, 4K, slow motion\"\naspect_ratio: \"16:9\"\nscene_description: \"A dark studio space with a single spotlight and reflective black surface.\"\ncamera_setup: \"Locked-off macro shot, no camera movement.\"\nkey_elements:\n  - \"Chilled Coca-Cola can with condensation\"\nnegative_prompts: [\"no people\", \"no text overlays\", \"no labels distortion\"]\n\ntimeline:\n  - sequence: 1\n    timestamp: \"00:00-00:02\"\n    action: \"The Coca-Cola can stands upright as condensation slowly drips.\"\n    audio: \"Soft ambient hum.\"\n\n  - sequence: 2\n    timestamp: \"00:02-00:05\"\n    action: \"The can opens and cola bursts upward, freezing mid-air into a sculptural splash.\"\n    audio: \"Sharp fizz followed by silence.\"\n\n  - sequence: 3\n    timestamp: \"00:05-00:08\"\n    action: \"Time resumes; liquid splashes back perfectly into the can.\"\n    audio: \"Smooth liquid pour, satisfying fizz.\"","notes":"Gemini Veo 3 video generation prompt for ultra-cinematic Coca-Cola commercial with time-freeze effect","author":{"name":"Smiling Khan","screen_name":"AIwithkhan","followers":7087},"engagement":{"likes":95,"retweets":22,"replies":52}},
-                {"id":30,"tweet_id":"1971955580488294863","url":"https://x.com/IqraSaifiii/status/1971955580488294863","category":"video-generation","title":"Living Library Scholar","prompt_text":"An 8-second, hyper-realistic, and magical cinematic sequence showing a scholar interacting with a living library of glowing, crystalline trees that hold ancient knowledge. The scene opens with a serene, gliding shot following a young scholar walking through a vast, cavernous library of immense, ancient trees with crystalline leaves, surrounded by floating spores of light. The scholar places their hand on a glowing bark-like trunk, causing the tree to pulse with golden light as energy veins travel up in slow motion. An extreme close-up on a crystalline leaf reveals complex, glowing runes and celestial maps swirling to life, with the scholar's eyes reflecting this data in profound understanding.","notes":"Solarpunk/High Fantasy Realism aesthetic. Scholar in earth-toned robes. Trees are fusion of banyan and quartz crystal with glowing fissures. Diegetic lighting from trees and spores. Virtual 8K cinema camera. Unreal Engine 5 rendering with subsurface scattering, volumetric lighting, and Lumen GI. Color palette: gold, amber, mossy green, earthy browns.","author":{"name":"Iqra Saifi","screen_name":"IqraSaifiii","followers":9284},"engagement":{"likes":85,"retweets":14,"replies":8}}
+                {"id":30,"tweet_id":"1971955580488294863","url":"https://x.com/IqraSaifiii/status/1971955580488294863","category":"video-generation","title":"Living Library Scholar","prompt_text":"An 8-second, hyper-realistic, and magical cinematic sequence showing a scholar interacting with a living library of glowing, crystalline trees that hold ancient knowledge. The scene opens with a serene, gliding shot following a young scholar walking through a vast, cavernous library of immense, ancient trees with crystalline leaves, surrounded by floating spores of light. The scholar places their hand on a glowing bark-like trunk, causing the tree to pulse with golden light as energy veins travel up in slow motion. An extreme close-up on a crystalline leaf reveals complex, glowing runes and celestial maps swirling to life, with the scholar's eyes reflecting this data in profound understanding.","notes":"Solarpunk/High Fantasy Realism aesthetic. Scholar in earth-toned robes. Trees are fusion of banyan and quartz crystal with glowing fissures. Diegetic lighting from trees and spores. Virtual 8K cinema camera. Unreal Engine 5 rendering with subsurface scattering, volumetric lighting, and Lumen GI. Color palette: gold, amber, mossy green, earthy browns.","author":{"name":"Iqra Saifi","screen_name":"IqraSaifiii","followers":9284},"engagement":{"likes":85,"retweets":14,"replies":8}},
+                {"id":32,"tweet_id":"2015733680589660504","url":"https://x.com/Strength04_X/status/2015733680589660504","category":"video-generation","title":"Nocturnal Amazon Frog Macro","prompt_text":"Documentary style detailed macro on cinema rig, misty grading, bioluminescent contrasts, spiraling Dutch tilt follow, nocturnal chaos. Dutch angle spiraling macro around a poison dart tree frog hopping along Amazon rainforest branch, sticky toes gripping, vines whipping, toxic evasion leap","notes":"Created using Google Veo 3.1 on Gemini - describes a cinematic macro video shot of a poison dart tree frog in the Amazon rainforest with spiraling camera movement, Dutch angle, bioluminescent lighting effects, and frog action shots","author":{"name":"𝐌","screen_name":"Strength04_X","followers":14600},"engagement":{"likes":105,"retweets":5,"replies":14}},
+                {"id":33,"tweet_id":"2038525426084323378","url":"https://x.com/Just_sharon7/status/2038525426084323378","category":"image-generation","title":"Watering the Seed","prompt_text":"An open children's picture book rests on a wooden table, showing a whimsical illustration of a small brown seed in cartoon soil. A realistic human hand pours water from a tiny can, with a sparkling stream. Warm golden light, magical mood, overhead close-up, photorealistic, 4K.","notes":"Photorealistic image prompt with magical mood and warm lighting for children's book illustration scene","author":{"name":"Sharon Riley","screen_name":"Just_sharon7","followers":43000},"engagement":{"likes":152,"retweets":21,"replies":34}},
+                {"id":34,"tweet_id":"2029889235948646510","url":"https://x.com/Strength04_X/status/2029889235948646510","category":"product/cinematic","title":"Effervescent Citrus Soda Tumbler","prompt_text":"A floating transparent tumbler filled with icy lemon-lime soda, effervescent bubbles racing upward as citrus wedges burst outward in slow motion. Glossy condensation beads shimmer under moody studio strobes. Hyper-real cinematic drink shot, razor-sharp macro clarity, dynamic splash physics, vibrant neon accents against a dark emerald background --stylize 275","notes":"Complete video generation prompt for a hyper-realistic beverage advertisement style shot with dynamic motion and specific stylization parameter included.","author":{"name":"𝐌","screen_name":"Strength04_X","followers":14600},"engagement":{"likes":79,"retweets":4,"replies":28}},
+                {"id":35,"tweet_id":"2025636068922429632","url":"https://x.com/HBCoop_/status/2025636068922429632","category":"image-generation","title":"1970s Desert Gas Station","prompt_text":"Photorealistic 1970s American gas station on a desert highway at dusk. A rusted metal sign reads 'LAST CHANCE GAS — NEXT STOP 187 MILES' in faded red block lettering. An analog price sign shows 'REGULAR: $3.59 / PREMIUM: $3.97'. Two vintage fuel pumps, cracked asphalt, a dusty pickup truck parked to the side. Golden hour backlight","notes":"Testing text rendering capabilities in image generation","author":{"name":"Heather Cooper","screen_name":"HBCoop_","followers":54400},"engagement":{"likes":57,"retweets":2,"replies":2}},
+                {"id":36,"tweet_id":"2032767421103354298","url":"https://x.com/Sheldon056/status/2032767421103354298","category":"video-generation","title":"Japanese Village Bicycle Journey","prompt_text":"A calm cinematic forward tracking shot moving gently down a long stone pathway in a peaceful hillside Japanese village. Traditional wooden houses with tiled roofs line both sides of the path, small gardens filled with colorful flowers swaying softly in the breeze, laundry moving lightly on wooden balconies. A young man rides a bicycle slowly downhill along the stone path toward the valley below. He pedals calmly through the quiet village, passing wooden fences, blooming plants, and sunlit houses. His movement feels natural and unhurried as the bicycle rolls smoothly along the path. Massive fluffy cumulus clouds drift across a deep blue summer sky above the valley. Warm golden sunlight illuminates the houses and hillsides, casting soft natural shadows across the pathway. Leaves rustle gently in the wind, distant birds chirp, and the peaceful village atmosphere feels calm and timeless. Studio Ghibli–inspired atmosphere, painterly textures, natural color grading, cinematic composition, shallow depth of field, subtle camera movement, soft film grain, 4K, 24fps, tranquil mood.","notes":"Cinematic video generation prompt for a peaceful Japanese village scene with forward tracking camera movement and a bicycle rider","author":{"name":"Duet | AI","screen_name":"Sheldon056","followers":12000},"engagement":{"likes":51,"retweets":1,"replies":24}},
+                {"id":37,"tweet_id":"2018166919992361374","url":"https://x.com/YaseenK7212/status/2018166919992361374","category":"image-generation","title":"Giant Matcha Pancake Skyscraper Construction","prompt_text":"Ultra-realistic giant matcha pancake skyscraper, stacked layer by layer by tiny miniature construction workers wearing bright orange uniforms and yellow helmets. Mini cranes lift thick green matcha pancake slabs while workers climb ladders and scaffolding. Fine matcha powder dusting the surface, creamy white butter melting and dripping down, subtle steam rising. Soft morning sunlight, cinematic depth, hyper-detailed photo-realistic style. --ar 3:4","notes":"Prompt for still image generation with cinematic hyper-detailed photo-realistic style","author":{"name":"Yaseen Khan Gul","screen_name":"YaseenK7212","followers":22500},"engagement":{"likes":108,"retweets":34,"replies":47}},
+                {"id":38,"tweet_id":"2013083809038905367","url":"https://x.com/Strength04_X/status/2013083809038905367","category":"character-design","title":"Anthropomorphic bunny character design","prompt_text":"A full-body 3D render of a cute yet cool anthropomorphic bunny character, standing confidently in a minimalist studio setting. The bunny has soft dark-gray fur with realistic plush texture, long upright ears, and a small pink nose. It is wearing black sunglasses with thin gold frames, a loose black oversized T-shirt featuring a simple white skull icon on the chest, cream-colored knee-length shorts with subtle fabric ribbing, and light orange sneakers with white soles. Hands casually placed in pockets, relaxed street-style pose. Clean neutral gray background, soft diffused studio lighting, gentle shadows, centered composition. Ultra-detailed, high realism, Pixar-quality character design, modern toy-figure aesthetic, smooth depth of field, cinematic lighting, 4K render.","notes":"9:16 aspect ratio specified","author":{"name":"𝐌","screen_name":"Strength04_X","followers":14600},"engagement":{"likes":202,"retweets":14,"replies":52}},
+                {"id":39,"tweet_id":"2036673434835468368","url":"https://x.com/MrDasOnX/status/2036673434835468368","category":"video-generation","title":"McDonald's Fries Explosion Ad","prompt_text":"8-second photorealistic cinematic video of a red McDonald's fries box exploding into golden fries that rain down in slow motion, forming a perfect serving on the table. Camera: low-angle push-in on fries box (0-3s), then sweeping circular orbit upward (4-8s). Lighting: warm restaurant-style spotlights with golden glow, reflections on crispy fries. Elements: red McDonald's fries box (center frame), golden crispy fries bursting upward, salt crystals sparkling mid-air, ketchup and mustard droplets suspended, napkin drifting into frame, tray sliding into position below fries, Coca-Cola cup rolling gently into view. Motion: 0-2s: fries box vibrates, fries burst upward in golden arcs. 2-5s: salt and condiments sparkle and tumble mid-air. 5-7s: fries assemble neatly into box as tray slides below. 7-8s: last fry lands softly on top. Style: photorealistic cinematic, high detail, fast food aesthetic, warm golden lighting, modern fast food counter with red and yellow branding accents, glossy table surface.","notes":"Ad concept prompt for McDonald's fries commercial-style video generated with Veo 3.1/Gemini","author":{"name":"Mr Das","screen_name":"MrDasOnX","followers":5575},"engagement":{"likes":50,"retweets":5,"replies":12}},
+                {"id":41,"tweet_id":"2026536517926371380","url":"https://x.com/Strength04_X/status/2026536517926371380","category":"video-generation","title":"Giant Glowing McDonald's Hamburger Building","prompt_text":"A McDonald's building transformed into a giant glowing hamburger, realistic architectural visualization, photorealistic rendering, cinematic lighting with neon glow effects, the hamburger buns form the main structure with sesame seeds on top, glowing ices and patty layers visible, the building maintains recognizable McDonald's elements while being completely reimagined as edible architecture, hyper-realistic 3D render","notes":"Created with Google Veo 3.1 + Nano Banana Pro on Gemini","author":{"name":"𝐌","screen_name":"Strength04_X","followers":14600},"engagement":{"likes":76,"retweets":20,"replies":13}},
+                {"id":42,"tweet_id":"2013127094679801996","url":"https://x.com/TheLOKII_/status/2013127094679801996","category":"cinematic","title":"Futuristic Nature Astronaut Scene","prompt_text":"A gigantic hollow astronaut suit overtaken by nature, standing in still water, covered in moss and vines. Inside the suit grows a thriving world — waterfalls, ancient temples, trees, birds in flight. Helmet reflects a peaceful sunrise over mountains. Surreal nature-meets-sci-fi fusion. 8K ultra-detailed realism, cinematic natural lighting, soft mist, high texture realism, photorealistic fabric and stone, shallow depth of field, fantasy realism, vertical 9:16, no humans, no logos","notes":"Surreal nature-sci-fi fusion concept with detailed visual elements for AI video/image generation","author":{"name":"LOKII","screen_name":"TheLOKII_","followers":14900},"engagement":{"likes":88,"retweets":15,"replies":62}},
+                {"id":44,"tweet_id":"2017630814599872867","url":"https://x.com/lexx_aura/status/2017630814599872867","category":"portrait","title":"Portrait of Young Woman with Backlighting","prompt_text":"Portrait of a young woman with a soft, confident smile and a slight head tilt, direct eye contact with the camera. Long, voluminous, messy wavy hair with layers in dark chocolate brown with intense reddish-copper highlights from backlighting, tousled texture with natural flyaways illuminated by the sun. Fair to light skin with visible natural texture, prominent freckles across nose and cheeks, winged eyeliner (cat eye style), groomed arched eyebrows, plump lips with natural pink tint, silver septum piercing. Oversized flannel/plaid shirt (dark brown, black, and white checkered pattern) slouched off one shoulder, casual grunge aesthetic, white ribbed tank top visible underneath. Outdoor residential backyard or garden setting with sharply focused trees, foliage, and house roofline, warm sunny summery relaxed indie vibe. Natural sunlight golden hour backlighting with strong lens flare from top, halo effect glowing through hair, soft dappled shadows on face. 4K Ultra HD photorealistic highly detailed texture, deep depth of field, everything in sharp focus, portrait photography raw look with sharp background.","notes":"Complete detailed portrait prompt with subject description, hair styling, outfit, environment, lighting conditions, and technical specifications. Suitable for Veo 3 video generation.","author":{"name":"Lex","screen_name":"lexx_aura","followers":16600},"engagement":{"likes":315,"retweets":71,"replies":80}},
+                {"id":45,"tweet_id":"1975184696683221046","url":"https://x.com/IqraSaifiii/status/1975184696683221046","category":"video-generation","title":"Hyper-Realistic Basketball Dunk in Slow Motion","prompt_text":"A hyper-realistic, high-resolution, super-slow-motion cinematic video of a basketball player dunking a ball.","notes":"Full detailed prompt with camera specifications, lighting, physics simulation, and sound design included.","author":{"name":"Iqra Saifi","screen_name":"IqraSaifiii","followers":9283},"engagement":{"likes":101,"retweets":12,"replies":6}},
+                {"id":46,"tweet_id":"2038984238838505596","url":"https://x.com/ShamiWeb3/status/2038984238838505596","category":"video-generation","title":"Apartment Renovation Cinematic Timelapse","prompt_text":"Ultra-realistic cinematic timelapse, daylight change from morning to evening, adaptive static camera, natural indoor lighting through windows, realistic movements of workers and tools. Interior renovation.","notes":"8-second video sequence showing transformation from empty concrete shell to modern dream home. Camera behavior: fixed corner position with slight frame/focal length adjustments to maintain full-room visibility as space fills with objects. Daylight progression from morning to evening. Four phases: initial empty state, demolition/preparation, finishing/painting, furniture/decor installation. Final shot: warm evening light, lamps on, cozy atmosphere, curtains moving gently.","author":{"name":"Shami","screen_name":"ShamiWeb3","followers":16100},"engagement":{"likes":152,"retweets":21,"replies":59}}
               ];
 
         function formatNumber(num) {
@@ -1106,41 +1187,50 @@
                     <div class="card-image">
                         <img src="generated_images/${prompt.id}.png" alt="Prompt preview" loading="lazy" onerror="this.src='https://picsum.photos/seed/${prompt.tweet_id}/550/307'">
                     </div>
-                    <div class="card-header">
-                        <div class="author-avatar">${prompt.author.name[0]}</div>
-                        <div class="author-info">
-                            <div class="author-name">${prompt.author.name}</div>
-                            <div class="author-handle">@${prompt.author.screen_name}</div>
-                        </div>
-                    </div>
                     <div class="card-body">
                         <span class="prompt-category" data-category="${prompt.category}">${prompt.category.replace('-', ' ')}</span>
                         <h3 class="prompt-title">${prompt.title}</h3>
                         <p class="prompt-preview">${prompt.prompt_text}</p>
                         <button class="view-more-btn" onclick="openModal('${prompt.tweet_id}')">&#x1F441; View Full Prompt</button>
-                        <div class="prompt-meta">
-                            <span class="meta-item">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                                ${formatNumber(prompt.engagement.likes)}
-                            </span>
-                            <span class="meta-item">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"></path><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><path d="M7 23l-4-4 4-4"></path><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
-                                ${formatNumber(prompt.engagement.retweets)}
-                            </span>
-                            <span class="meta-item">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                                ${formatNumber(prompt.engagement.replies)}
-                            </span>
-                            <span class="meta-item" style="margin-left: auto;">
-                                ${formatNumber(prompt.author.followers)} followers
-                            </span>
-                        </div>
                     </div>
                     <div class="card-footer">
-                        <button class="btn btn-share" onclick="sharePrompt('${prompt.id}')" title="Share">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                        </button>
-                        <a href="https://sparki.io/create" target="_blank" class="btn btn-primary" onclick="navigator.clipboard.writeText('${prompt.prompt_text.replace(/'/g, "\\'")}')">Try ⚡</a>
+                        <div class="author-row">
+                            <div class="author-left">
+                                <div class="author-avatar">${prompt.author.name[0]}</div>
+                                <div class="author-info">
+                                    <div class="author-name">${prompt.author.name}</div>
+                                    <div class="author-handle">@${prompt.author.screen_name}</div>
+                                </div>
+                            </div>
+                            <div class="author-divider"></div>
+                            <div class="author-right">
+                                <div class="author-stats-row1">
+                                    <span class="meta-item">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                                        ${formatNumber(prompt.engagement.likes)}
+                                    </span>
+                                    <span class="meta-item">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"></path><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><path d="M7 23l-4-4 4-4"></path><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                                        ${formatNumber(prompt.engagement.retweets)}
+                                    </span>
+                                    <span class="meta-item">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                                        ${formatNumber(prompt.engagement.replies)}
+                                    </span>
+                                </div>
+                                <div class="author-stats-row2">
+                                    <span class="meta-item followers-item">
+                                        ${formatNumber(prompt.author.followers)} followers
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn btn-share" onclick="sharePrompt('${prompt.id}')" title="Share">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                            </button>
+                            <a href="https://sparki.io/create" target="_blank" class="btn btn-primary" onclick="navigator.clipboard.writeText('${prompt.prompt_text.replace(/'/g, "\\'")}')">Try ⚡</a>
+                        </div>
                     </div>
                 </article>
             `;

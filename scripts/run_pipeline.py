@@ -194,12 +194,14 @@ def run_x_multi_search() -> tuple[int, int]:
     return result.returncode, count_tweets_in_db()
 
 
-def run_extract_prompts(scrape_id: int = None) -> tuple[int, int]:
+def run_extract_prompts(scrape_id: int = None, yes: bool = False) -> tuple[int, int]:
     """Run Phase 2: extract_prompts.py. Returns (exit_code, prompt_count)."""
     script = PROJECT_ROOT / "scripts" / "extract_prompts.py"
     cmd = [sys.executable, str(script)]
     if scrape_id is not None:
         cmd.extend(["--scrape-id", str(scrape_id)])
+    if yes:
+        cmd.append("--yes")
     result = subprocess.run(
         cmd,
         capture_output=True, text=True,
@@ -295,6 +297,8 @@ def main():
                         help="Show what would be done")
     parser.add_argument("--all",      action="store_true",
                         help="Run all three phases")
+    parser.add_argument("--yes",     action="store_true",
+                        help="Auto-approve new categories in Phase 2")
     args = parser.parse_args()
 
     init_db()
@@ -352,7 +356,7 @@ def main():
         print("\n[Phase 2] Starting LLM Prompt Extraction...")
         new_ids = get_new_prompt_ids()
         print(f"  Will process tweets (existing entries auto-skipped)")
-        rc, prompt_count = run_extract_prompts(scrape_id=args.scrape_id)
+        rc, prompt_count = run_extract_prompts(scrape_id=args.scrape_id, yes=args.yes)
         print(f"\n[Phase 2] Done — prompts in DB: {prompt_count}")
         if rc != 0:
             print(f"  FAIL: Phase 2 exit code {rc}")

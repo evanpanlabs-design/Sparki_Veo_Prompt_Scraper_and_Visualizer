@@ -145,6 +145,115 @@ def recheck_tweet(tweet: dict, api_base: str, api_key: str, model: str) -> Optio
     return call_llm(tweet.get("text", ""), api_base, api_key, model, RECHECK_PROMPT)
 
 
+# ─── Post-extraction validation & repair ──────────────────────────────────────
+
+# Keywords that appear INSIDE a JSON structure, meaning the LLM likely
+# extracted a JSON key name (like "title") instead of the actual prompt content.
+_JSON_INDICATORS = {"\"style\":", "\"scenes\":", "\"camera\":", "\"mood\":", "\"aspect_ratio\":",
+                    "\"scene_number\":", "\"description\":", "\"audio\":", "\"background_music\":"}
+
+# Text fragments that indicate the LLM extracted a placeholder, not real content.
+_PLACEHOLDER_INDICATORS = {"...", "[the full prompt text]", "see comments", "见评论",
+                           "prompt below", "in reply"}
+
+
+def looks_like_json_extraction(prompt_text: str) -> bool:
+    """True if prompt_text looks like a JSON key name, not actual content."""
+    if not prompt_text:
+        return False
+    t = prompt_text.strip()
+    return any(t.startswith(k) or t.startswith(k.replace("\"", ""))
+               for k in _JSON_INDICATORS)
+
+
+def looks_like_placeholder(prompt_text: str) -> bool:
+    """True if prompt_text is clearly a placeholder, not real extracted content."""
+    if not prompt_text:
+        return True
+    t = prompt_text.strip().lower()
+    if len(t) < 15:
+        return True
+    # Explicitly detect known placeholder literals
+    KNOWN_PLACEHOLDERS = {
+        "...", "...", "[the full prompt text]", "[full prompt text]",
+        "see comments", "见评论", "prompt below", "in reply",
+        "see reply", "prompt in comments",
+    }
+    if t in KNOWN_PLACEHOLDERS or any(t.startswith(p) for p in KNOWN_PLACEHOLDERS):
+        return True
+    # Also flag when prompt_text is a single short phrase that doesn't describe a scene
+    # (e.g. "A hyper-realistic watch in mountains" is valid, but "full prompt" is not)
+    short_phrases = {"full prompt text", "see below", "as above", "see link"}
+    if t in short_phrases:
+        return True
+    return False
+
+
+def reextract_structured_prompt(tweet: dict, api_base: str, api_key: str, model: str) -> Optional[dict]:
+    """
+    For tweets where the LLM misinterpreted a JSON structure as a prompt title,
+    OR the tweet contains a "Prompt:-" style literal prompt marker.
+    The tweet text is re-parsed specifically looking for structured prompts
+    (JSON / shot-list / scene-breakdown format) and extracting the actual prompt content.
+    """
+    RESTRUCTURED_PROMPT = (
+        "You are a video prompt extraction specialist.\n"
+        "A tweet may contain a STUCTURED prompt in JSON, YAML, shot-list, or scene-breakdown format.\n"
+        "OR it may contain a literal prompt prefixed with 'Prompt:' or 'Prompt:-'.\n"
+        "Your job is to find it and extract the FULL content.\n\n"
+        "Rules:\n"
+        "  - If the tweet contains a structured prompt (JSON/shot list/scene format),\n"
+        "    extract the FULL raw structured text as prompt_text — do NOT summarize or reformat.\n"
+        "  - If the tweet contains a 'Prompt:' or 'Prompt:-' marker followed by prompt content,\n"
+        "    extract EVERYTHING after that marker as the full prompt_text.\n"
+        "  - The 'title' field should be a SHORT label (e.g. 'Luxury Chronograph Watch',\n"
+        "    'Cinematic Mountain Product Shot'), NOT a description or quote.\n"
+        "  - The 'prompt_text' field must contain the ACTUAL prompt content from the tweet.\n"
+        "  - If there is no structured prompt and no 'Prompt:' marker, return null.\n\n"
+        'Reply with: {"is_prompt": true/false, "category": "...", "title": "...", '
+        '"prompt_text": "...full prompt text...", "notes": "..."} or null.'
+    )
+    return call_llm(tweet.get("text", ""), api_base, api_key, model, RESTRUCTURED_PROMPT)
+
+
+def validate_and_repair(prompt_result: Optional[dict], tweet: dict,
+                        api_base: str, api_key: str, model: str) -> Optional[dict]:
+    """
+    Post-extraction check: if prompt_text looks like a JSON key name or a placeholder,
+    attempt one re-extraction pass with a specialized prompt.
+
+    Returns a repaired prompt dict, or None if repair fails.
+    """
+    if prompt_result is None:
+        return None
+
+    prompt_text = prompt_result.get("prompt_text", "")
+
+    # Case 1: prompt_text looks like a JSON key name → re-extract with structured-aware prompt
+    if looks_like_json_extraction(prompt_text):
+        repaired = reextract_structured_prompt(tweet, api_base, api_key, model)
+        if repaired and repaired.get("is_prompt", False):
+            # Merge: keep the category/call from original result if repaired has None
+            if not repaired.get("category") or repaired["category"] == "other":
+                repaired["category"] = prompt_result.get("category", "other")
+            return repaired
+
+    # Case 2: prompt_text is too short / placeholder → re-extract via structured repair
+    if looks_like_placeholder(prompt_text):
+        # Try reextract with focus on "Prompt:" keyword extraction
+        repaired = reextract_structured_prompt(tweet, api_base, api_key, model)
+        if repaired and repaired.get("is_prompt", False):
+            if not repaired.get("prompt_text") or looks_like_placeholder(repaired["prompt_text"]):
+                repaired = None  # still bad, fall through
+        if repaired is None:
+            # Last resort: raw recheck
+            repaired = recheck_tweet(tweet, api_base, api_key, model)
+        if repaired and repaired.get("is_prompt", False):
+            return repaired
+
+    return prompt_result
+
+
 def process_tweet(
     tweet: dict,
     api_base: str,
@@ -162,6 +271,11 @@ def process_tweet(
             result = recheck_tweet(tweet, api_base, api_key, model)
         if result is None or not result.get("is_prompt", False):
             return None, False, None
+
+    # Post-extraction validation & repair for structured/placeholder failures
+    result = validate_and_repair(result, tweet, api_base, api_key, model)
+    if result is None or not result.get("is_prompt", False):
+        return None, False, None
 
     category = result.get("category", "other")
     prompt_dict = {
@@ -222,6 +336,7 @@ def handle_new_categories(
     api_key: str,
     api_base: str,
     model: str,
+    yes: bool = False,
 ) -> list[dict]:
     """Check prompts for unknown categories, pause and ask user for each one."""
     new_cat_prompts = [p for p in prompts if p["category"] not in known_categories]
@@ -245,7 +360,12 @@ def handle_new_categories(
         print(f"  [y] Approve — add '{cat_name}' to categories")
         print(f"  [n] Reject  — mark as 'other', don't add category")
         print(f"  [r] Rename  — type new name to replace '{cat_name}'")
-        choice = input("Your choice [y/n/r]: ").strip().lower()
+
+        if yes:
+            choice = "y"
+            print(f"  [AUTO] choice='y' (--yes flag)")
+        else:
+            choice = input("Your choice [y/n/r]: ").strip().lower()
 
         if choice == "y":
             approve_suggestion(suggest_category(
@@ -284,6 +404,7 @@ def extract_prompts(
     model: str,
     concurrency: int = DEFAULT_CONCURRENCY,
     scrape_id: int = None,
+    yes: bool = False,
 ) -> list[dict]:
     init_db()
 
@@ -375,7 +496,7 @@ def extract_prompts(
             on_result(i, tweet, result_tuple)
 
     # Check for new categories and handle them
-    prompts = handle_new_categories(prompts, known_cat_names, api_key, api_base, model)
+    prompts = handle_new_categories(prompts, known_cat_names, api_key, api_base, model, yes=yes)
 
     # Save to DB
     db_scrape_id = scrape_id if scrape_id else 1  # default scrape if none
@@ -443,6 +564,8 @@ def main():
                         help=f"LLM model (default: {DEFAULT_MODEL})")
     parser.add_argument("--concurrency", type=int, default=DEFAULT_CONCURRENCY,
                         help=f"Parallel LLM calls (default: {DEFAULT_CONCURRENCY})")
+    parser.add_argument("--yes",         action="store_true",
+                        help="Auto-approve new categories without asking")
     args = parser.parse_args()
 
     input_path = Path(args.input) if args.input else None
@@ -467,6 +590,7 @@ def main():
         model=args.model,
         concurrency=args.concurrency,
         scrape_id=args.scrape_id,
+        yes=args.yes,
     )
 
 

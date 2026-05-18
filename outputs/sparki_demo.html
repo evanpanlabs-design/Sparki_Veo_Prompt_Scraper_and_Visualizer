@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sparki — Prompt Scraper Dashboard</title>
+<style>
+  /* ── Reset & Base ─────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f7f7f7;
+    --bg-card: #fefefe;
+    --border: #e5e7eb;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+    --accent-blue: #3b82f6;
+    --accent-blue-light: #eaf0ff;
+    --accent-orange: #ff9100;
+    --accent-orange-light: #fff4e3;
+    --success: #22c55e;
+    --success-light: #f0fdf4;
+    --error: #ef4444;
+    --error-light: #fef2f2;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.04);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--font);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Layout Shell ─────────────────────────────────────────── */
+  .shell {
+    display: grid;
+    grid-template-rows: 56px 1fr;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── Topbar ────────────────────────────────────────────────── */
+  .topbar {
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 24px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .topbar-logo {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .topbar-logo span { color: var(--accent-blue); }
+  .topbar-nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+  }
+  .topbar-tab {
+    padding: 6px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+    background: none;
+  }
+  .topbar-tab:hover { background: var(--bg-secondary); color: var(--text-primary); }
+  .topbar-tab.active {
+    background: var(--accent-blue-light);
+    color: var(--accent-blue);
+  }
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+  }
+  .topbar-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--success);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .topbar-btn {
+    padding: 6px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .topbar-btn:hover { background: var(--bg-secondary); }
+
+  /* ── Main Grid ─────────────────────────────────────────────── */
+  .main {
+    display: grid;
+    grid-template-columns: 320px 1fr 340px;
+    gap: 0;
+    overflow: hidden;
+    height: 100%;
+  }
+
+  /* ── Left Panel ────────────────────────────────────────────── */
+  .panel-left {
+    background: var(--bg-primary);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .panel-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .panel-section-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding-bottom: 4px;
+  }
+
+  /* ── Form Controls ────────────────────────────────────────── */
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .field-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+  .field-input {
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-family: var(--font);
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    width: 100%;
+  }
+  .field-input:focus {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+  }
+  .field-input::placeholder { color: var(--text-muted); }
+  textarea.field-input {
+    resize: vertical;
+    min-height: 64px;
+    line-height: 1.6;
+  }
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+  }
+  .field-row-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+  }
+
+  /* Tags input */
+  .tags-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    min-height: 38px;
+    cursor: text;
+    align-items: center;
+  }
+  .tags-wrap:focus-within {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+  }
+  .tag {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    background: var(--accent-blue-light);
+    color: var(--accent-blue);
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: default;
+  }
+  .tag-remove {
+    cursor: pointer;
+    opacity: 0.6;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .tag-remove:hover { opacity: 1; }
+  .tags-input {
+    border: none;
+    outline: none;
+    font-size: 13px;
+    font-family: var(--font);
+    background: transparent;
+    min-width: 80px;
+    flex: 1;
+    color: var(--text-primary);
+  }
+
+  /* Checkbox / Toggle */
+  .toggle-group {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .toggle-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s;
+  }
+  .toggle-chip.active {
+    background: var(--accent-blue-light);
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
+  }
+  .toggle-chip input { display: none; }
+
+  /* ── Action Buttons ────────────────────────────────────────── */
+  .action-bar {
+    display: flex;
+    gap: 8px;
+    padding-top: 4px;
+  }
+  .btn {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.15s;
+  }
+  .btn-primary {
+    background: var(--accent-blue);
+    color: white;
+  }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-secondary {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { background: #f3f4f6; }
+  .btn-danger {
+    background: var(--error-light);
+    color: var(--error);
+    border: 1px solid #fecaca;
+  }
+  .btn-danger:hover { background: #fee2e2; }
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+  .btn .spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Center Panel ──────────────────────────────────────────── */
+  .panel-center {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-secondary);
+  }
+
+  /* Progress Section */
+  .progress-header {
+    padding: 16px 20px 12px;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .progress-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .progress-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .progress-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .progress-badge.running {
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+  .progress-badge.paused {
+    background: var(--accent-orange-light);
+    color: var(--accent-orange);
+  }
+  .progress-badge.idle {
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+  }
+
+  /* Stats Row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .stat-cell {
+    background: var(--bg-primary);
+    padding: 12px 16px;
+    text-align: center;
+  }
+  .stat-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  /* Progress Bar */
+  .progress-wrap {
+    padding: 14px 20px;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .progress-bar-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .progress-track {
+    height: 6px;
+    background: var(--bg-secondary);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-blue), #60a5fa);
+    border-radius: 3px;
+    transition: width 0.6s ease;
+    width: 0%;
+  }
+
+  /* Prompt Cards */
+  .cards-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+    align-content: start;
+  }
+  .card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s, transform 0.2s;
+    cursor: pointer;
+  }
+  .card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+  }
+  .card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.4;
+    flex: 1;
+  }
+  .card-cat {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 10px;
+    background: var(--accent-blue-light);
+    color: var(--accent-blue);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .card-preview {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 8px;
+    border-top: 1px solid var(--bg-secondary);
+  }
+  .card-author {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .card-author-avatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+  }
+  .card-engage {
+    display: flex;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .card-engage span {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  /* Empty state */
+  .empty-state {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+    text-align: center;
+    gap: 12px;
+  }
+  .empty-icon {
+    width: 48px;
+    height: 48px;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    opacity: 0.5;
+  }
+  .empty-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  .empty-desc {
+    font-size: 12px;
+    max-width: 260px;
+  }
+
+  /* ── Right Panel ────────────────────────────────────────────── */
+  .panel-right {
+    background: var(--bg-primary);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .log-header {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .log-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .log-count {
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--bg-secondary);
+    padding: 2px 7px;
+    border-radius: 10px;
+  }
+  .log-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 11.5px;
+    line-height: 1.7;
+  }
+  .log-line {
+    display: flex;
+    gap: 0;
+    padding: 1px 16px;
+    align-items: flex-start;
+  }
+  .log-line:hover { background: var(--bg-secondary); }
+  .log-time {
+    color: var(--text-muted);
+    flex-shrink: 0;
+    margin-right: 10px;
+    font-size: 10px;
+    padding-top: 1px;
+  }
+  .log-msg { flex: 1; word-break: break-all; }
+  .log-line.info .log-msg { color: var(--text-secondary); }
+  .log-line.ok .log-msg { color: var(--success); }
+  .log-line.error .log-msg { color: var(--error); }
+  .log-line.warn .log-msg { color: var(--accent-orange); }
+  .log-line.sys .log-msg { color: var(--text-muted); font-style: italic; }
+
+  /* ── Data Table (within right panel or tabs) ───────────────── */
+  .data-section {
+    border-top: 1px solid var(--border);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .data-header {
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary);
+  }
+  .data-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+  .data-table-wrap {
+    flex: 1;
+    overflow-y: auto;
+  }
+  table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  table.data-table th {
+    position: sticky;
+    top: 0;
+    background: var(--bg-secondary);
+    padding: 8px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  table.data-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--bg-secondary);
+    color: var(--text-secondary);
+    vertical-align: middle;
+  }
+  table.data-table tr:hover td { background: var(--bg-secondary); }
+  .table-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .table-status.scrape {
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+  .table-status.extract {
+    background: #f3e8ff;
+    color: #7c3aed;
+  }
+  .table-status.done {
+    background: var(--success-light);
+    color: #15803d;
+  }
+  .table-status.fail {
+    background: var(--error-light);
+    color: var(--error);
+  }
+
+  /* ── Scrollbar ─────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ── Topbar ─────────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="topbar-logo">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <rect width="22" height="22" rx="6" fill="#3B82F6"/>
+        <path d="M7 11L10 14L15 8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Sparki <span>Scraper</span>
+    </div>
+    <nav class="topbar-nav">
+      <button class="topbar-tab active" onclick="switchTab(this, 'dashboard')">仪表盘</button>
+      <button class="topbar-tab" onclick="switchTab(this, 'config')">配置</button>
+      <button class="topbar-tab" onclick="switchTab(this, 'data')">数据</button>
+      <button class="topbar-tab" onclick="switchTab(this, 'preview')">预览</button>
+    </nav>
+    <div class="topbar-right">
+      <div class="topbar-status">
+        <div class="status-dot"></div>
+        <span>已连接</span>
+      </div>
+      <button class="topbar-btn" onclick="showHelp()">?</button>
+    </div>
+  </header>
+
+  <div class="main">
+
+    <!-- ── LEFT: Config Panel ──────────────────────────────── -->
+    <aside class="panel-left">
+
+      <!-- Queries -->
+      <div class="panel-section">
+        <div class="panel-section-title">搜索关键词 (Queries)</div>
+        <div class="tags-wrap" id="tagsWrap" onclick="document.getElementById('tagsInput').focus()">
+          <span class="tag" id="tag-0">Veo 3.1 prompt<span class="tag-remove" onclick="removeTag(0, event)">×</span></span>
+          <span class="tag" id="tag-1">AI video generation<span class="tag-remove" onclick="removeTag(1, event)">×</span></span>
+          <span class="tag" id="tag-2">Gemini image prompt<span class="tag-remove" onclick="removeTag(2, event)">×</span></span>
+          <input class="tags-input" id="tagsInput" placeholder="+ 添加关键词..." onkeydown="handleTagKey(event)">
+        </div>
+      </div>
+
+      <!-- Engagement Filter -->
+      <div class="panel-section">
+        <div class="panel-section-title">Engagement 过滤</div>
+        <div class="field-row-3">
+          <div class="field">
+            <label class="field-label">min_likes</label>
+            <input class="field-input" type="number" value="50" id="minLikes">
+          </div>
+          <div class="field">
+            <label class="field-label">min_retweets</label>
+            <input class="field-input" type="number" value="20" id="minRt">
+          </div>
+          <div class="field">
+            <label class="field-label">min_followers</label>
+            <input class="field-input" type="number" value="1000" id="minFlw">
+          </div>
+        </div>
+      </div>
+
+      <!-- Scraper Config -->
+      <div class="panel-section">
+        <div class="panel-section-title">爬虫配置</div>
+        <div class="field-row-3" style="margin-bottom:8px">
+          <div class="field">
+            <label class="field-label">max_scrolls</label>
+            <input class="field-input" type="number" value="150" id="maxScrolls">
+          </div>
+          <div class="field">
+            <label class="field-label">pause(s)</label>
+            <input class="field-input" type="number" value="0.2" step="0.1" id="pause">
+          </div>
+          <div class="field">
+            <label class="field-label">stale_thr</label>
+            <input class="field-input" type="number" value="8" id="staleThr">
+          </div>
+        </div>
+        <div class="toggle-group">
+          <label class="toggle-chip active" id="headlessToggle">
+            <input type="checkbox" checked onchange="toggleChip(this)">
+            无头模式
+          </label>
+        </div>
+      </div>
+
+      <!-- GCS Config -->
+      <div class="panel-section">
+        <div class="panel-section-title">GCS Bucket</div>
+        <div class="field" style="margin-bottom:6px">
+          <label class="field-label">Bucket 名称</label>
+          <input class="field-input" placeholder="sparki-op-test" id="gcsBucket">
+        </div>
+        <div class="field">
+          <label class="field-label">GCP Project ID</label>
+          <input class="field-input" placeholder="my-gcp-project" id="gcpProject">
+        </div>
+      </div>
+
+      <!-- LLM Config -->
+      <div class="panel-section">
+        <div class="panel-section-title">LLM 配置</div>
+        <div class="field" style="margin-bottom:6px">
+          <label class="field-label">API Base</label>
+          <input class="field-input" value="https://api.minimaxi.com/v1" id="apiBase">
+        </div>
+        <div class="field">
+          <label class="field-label">Model</label>
+          <input class="field-input" value="MiniMax-M2.7" id="llmModel">
+        </div>
+      </div>
+
+      <!-- Mode -->
+      <div class="panel-section">
+        <div class="panel-section-title">任务模式</div>
+        <div class="toggle-group">
+          <label class="toggle-chip active" id="chip-scrape">
+            <input type="checkbox" checked onchange="toggleChip(this)">
+            Scrape
+          </label>
+          <label class="toggle-chip active" id="chip-extract">
+            <input type="checkbox" checked onchange="toggleChip(this)">
+            Extract
+          </label>
+          <label class="toggle-chip active" id="chip-html">
+            <input type="checkbox" checked onchange="toggleChip(this)">
+            HTML
+          </label>
+          <label class="toggle-chip" id="chip-publish">
+            <input type="checkbox" onchange="toggleChip(this)">
+            Publish
+          </label>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="action-bar">
+        <button class="btn btn-primary" id="btnStart" onclick="startPipeline()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          开始任务
+        </button>
+        <button class="btn btn-secondary" onclick="saveConfig()">保存</button>
+      </div>
+      <button class="btn btn-danger" id="btnStop" onclick="stopPipeline()" disabled style="width:100%">
+        停止
+      </button>
+
+    </aside>
+
+    <!-- ── CENTER: Progress + Cards ─────────────────────────── -->
+    <section class="panel-center">
+
+      <!-- Progress Header -->
+      <div class="progress-header">
+        <div class="progress-title">任务进度</div>
+        <div class="progress-meta">
+          <span id="elapsedTime">00:00</span>
+          <span class="progress-badge idle" id="statusBadge">待机</span>
+        </div>
+      </div>
+
+      <!-- Stats Row -->
+      <div class="stats-row">
+        <div class="stat-cell">
+          <div class="stat-value" id="statQueries">3</div>
+          <div class="stat-label">Queries</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-value" id="statTweets">0</div>
+          <div class="stat-label">已采推文</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-value" id="statExtracted">0</div>
+          <div class="stat-label">成功提取</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-value" id="statFailed">0</div>
+          <div class="stat-label">失败</div>
+        </div>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="progress-wrap">
+        <div class="progress-bar-row">
+          <span>Overall Progress</span>
+          <span id="progressPct">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+
+      <!-- Cards -->
+      <div class="cards-area" id="cardsArea">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">📋</div>
+          <div class="empty-title">暂无数据</div>
+          <div class="empty-desc">开始任务后，提取的 Prompt 会显示在这里</div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ── RIGHT: Log + Data ───────────────────────────────── -->
+    <aside class="panel-right">
+
+      <!-- Log -->
+      <div style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+        <div class="log-header">
+          <span class="log-title">实时日志</span>
+          <span class="log-count" id="logCount">0 条</span>
+        </div>
+        <div class="log-body" id="logBody"></div>
+      </div>
+
+      <!-- Data Table -->
+      <div class="data-section">
+        <div class="data-header">
+          <span class="data-title">数据库记录</span>
+          <span style="font-size:11px;color:var(--text-muted)">29 条</span>
+        </div>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Category</th>
+                <th>Title</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="dataTableBody">
+              <tr>
+                <td>29</td>
+                <td>video-generation</td>
+                <td>Luxury Chronograph Watch</td>
+                <td><span class="table-status done">Done</span></td>
+              </tr>
+              <tr>
+                <td>28</td>
+                <td>video-generation</td>
+                <td>Cinematic Mountain Scene</td>
+                <td><span class="table-status done">Done</span></td>
+              </tr>
+              <tr>
+                <td>27</td>
+                <td>image-generation</td>
+                <td>Futuristic City at Night</td>
+                <td><span class="table-status done">Done</span></td>
+              </tr>
+              <tr>
+                <td>26</td>
+                <td>cinematic</td>
+                <td>Portrait of a Stranger</td>
+                <td><span class="table-status extract">Extract</span></td>
+              </tr>
+              <tr>
+                <td>25</td>
+                <td>video-generation</td>
+                <td>—</td>
+                <td><span class="table-status scrape">Scrape</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </aside>
+  </div>
+</div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────
+  let running = false;
+  let paused = false;
+  let startTime = null;
+  let timerInterval = null;
+  let logLines = [];
+  let totalQueries = 3;
+  let currentQueryIdx = 0;
+  let statTweets = 0;
+  let statExtracted = 0;
+  let statFailed = 0;
+
+  // ── Tags ─────────────────────────────────────────────────
+  const tags = [
+    { id: 0, text: 'Veo 3.1 prompt' },
+    { id: 1, text: 'AI video generation' },
+    { id: 2, text: 'Gemini image prompt' },
+  ];
+  let nextTagId = 3;
+
+  function removeTag(id, e) {
+    e.stopPropagation();
+    const el = document.getElementById('tag-' + id);
+    if (el) el.remove();
+    const idx = tags.findIndex(t => t.id === id);
+    if (idx !== -1) tags.splice(idx, 1);
+  }
+
+  function handleTagKey(e) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const val = e.target.value.trim().replace(/,$/, '');
+      if (val) {
+        const id = nextTagId++;
+        tags.push({ id, text: val });
+        const span = document.createElement('span');
+        span.className = 'tag';
+        span.id = 'tag-' + id;
+        span.innerHTML = val + '<span class="tag-remove" onclick="removeTag(' + id + ', event)">×</span>';
+        e.target.parentNode.insertBefore(span, e.target);
+        e.target.value = '';
+      }
+    }
+  }
+
+  function toggleChip(el) {
+    const chip = el.closest('.toggle-chip');
+    chip.classList.toggle('active', el.checked);
+  }
+
+  // ── Log ──────────────────────────────────────────────────
+  function addLog(level, msg) {
+    const now = new Date();
+    const ts = now.toTimeString().slice(0, 8);
+    logLines.push({ ts, level, msg });
+
+    const body = document.getElementById('logBody');
+    const line = document.createElement('div');
+    line.className = 'log-line ' + level;
+    line.innerHTML = '<span class="log-time">' + ts + '</span><span class="log-msg">' + escapeHtml(msg) + '</span>';
+    body.appendChild(line);
+    body.scrollTop = body.scrollHeight;
+    document.getElementById('logCount').textContent = logLines.length + ' 条';
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Timer ─────────────────────────────────────────────────
+  function startTimer() {
+    startTime = Date.now();
+    timerInterval = setInterval(updateTimer, 1000);
+  }
+
+  function updateTimer() {
+    if (paused || !startTime) return;
+    const sec = Math.floor((Date.now() - startTime) / 1000);
+    const m = String(Math.floor(sec / 60)).padStart(2, '0');
+    const s = String(sec % 60).padStart(2, '0');
+    document.getElementById('elapsedTime').textContent = m + ':' + s;
+  }
+
+  function stopTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+  }
+
+  // ── Pipeline Control ──────────────────────────────────────
+  function startPipeline() {
+    if (running) {
+      if (paused) {
+        paused = false;
+        document.getElementById('statusBadge').textContent = '运行中';
+        document.getElementById('statusBadge').className = 'progress-badge running';
+        addLog('info', '任务已继续');
+        return;
+      }
+      return;
+    }
+
+    running = true;
+    paused = false;
+    currentQueryIdx = 0;
+    statTweets = 0;
+    statExtracted = 0;
+    statFailed = 0;
+
+    document.getElementById('btnStart').disabled = true;
+    document.getElementById('btnStop').disabled = false;
+    document.getElementById('statusBadge').textContent = '运行中';
+    document.getElementById('statusBadge').className = 'progress-badge running';
+    document.getElementById('emptyState').style.display = 'none';
+
+    startTimer();
+    addLog('sys', '=== Pipeline 启动 ===');
+
+    // Simulate phases
+    simulateScrape();
+  }
+
+  function stopPipeline() {
+    running = false;
+    paused = false;
+    stopTimer();
+    document.getElementById('btnStart').disabled = false;
+    document.getElementById('btnStop').disabled = true;
+    document.getElementById('statusBadge').textContent = '已停止';
+    document.getElementById('statusBadge').className = 'progress-badge idle';
+    addLog('warn', '任务已停止');
+  }
+
+  function updateStats() {
+    document.getElementById('statTweets').textContent = statTweets;
+    document.getElementById('statExtracted').textContent = statExtracted;
+    document.getElementById('statFailed').textContent = statFailed;
+    const total = totalQueries;
+    const pct = Math.round((currentQueryIdx / total) * 100);
+    document.getElementById('progressPct').textContent = pct + '%';
+    document.getElementById('progressFill').style.width = pct + '%';
+  }
+
+  // ── Simulation (frontend-only demo) ─────────────────────
+  const DEMO_PROMPTS = [
+    { title: 'Luxury Chronograph Watch', cat: 'video-generation', author: '@M', preview: 'A rugged, matte-black chronograph watch with bold orange accents is tightly framed between two textured rock formations...', likes: 142, rt: 23 },
+    { title: 'Wrapped vs Unwrapped Toffee', cat: 'cinematic', author: '@simeon-sanai', preview: 'A quiet outdoor setting with a clean surface under soft natural light. Two identical toffees are placed side by side...', likes: 96, rt: 15 },
+    { title: 'Futuristic City at Night', cat: 'image-generation', author: '@aiart labs', preview: 'A sprawling cyberpunk metropolis illuminated by neon billboards and flying vehicles, viewed from above...', likes: 320, rt: 67 },
+    { title: 'Portrait of a Stranger', cat: 'cinematic', author: '@davidfilmmaker', preview: 'A candid portrait of an elderly man on a busy Tokyo street, warm evening light casting long shadows...', likes: 87, rt: 12 },
+    { title: 'Mountain Product Shot', cat: 'product-photography', author: '@luxurywatch', preview: 'A matte-black chronograph watch nestled between granite boulders at golden hour, dust particles floating...', likes: 204, rt: 38 },
+  ];
+
+  function addCard(prompt) {
+    const area = document.getElementById('cardsArea');
+    const empty = document.getElementById('emptyState');
+    if (empty) empty.style.display = 'none';
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-header">
+        <div class="card-title">${escapeHtml(prompt.title)}</div>
+        <span class="card-cat">${prompt.cat}</span>
+      </div>
+      <div class="card-preview">${escapeHtml(prompt.preview)}</div>
+      <div class="card-footer">
+        <div class="card-author">
+          <div class="card-author-avatar">${prompt.author[1] || '?'}</div>
+          <span>${prompt.author}</span>
+        </div>
+        <div class="card-engage">
+          <span>♥ ${prompt.likes}</span>
+          <span>↔ ${prompt.rt}</span>
+        </div>
+      </div>
+    `;
+    area.insertBefore(card, area.firstChild);
+  }
+
+  function simulateScrape() {
+    if (!running) return;
+
+    const queries = ['Veo 3.1 prompt', 'AI video generation', 'Gemini image prompt'];
+    if (currentQueryIdx >= queries.length) {
+      simulateExtract();
+      return;
+    }
+
+    const q = queries[currentQueryIdx];
+    addLog('info', `[1/3] Scrape → Query: "${q}"`);
+
+    // Simulate scroll ticks
+    let scrollCount = 0;
+    const scrollInterval = setInterval(() => {
+      if (!running || paused) return;
+      scrollCount++;
+      statTweets += Math.floor(Math.random() * 12 + 5);
+      document.getElementById('statTweets').textContent = statTweets;
+      addLog('info', `  ↳ 滚动 #${scrollCount} → +${Math.floor(Math.random()*12+5)} 条推文`);
+
+      if (scrollCount >= 8) {
+        clearInterval(scrollInterval);
+        currentQueryIdx++;
+        updateStats();
+        addLog('ok', `  ✓ Query "${q}" 完成 (${statTweets} 条累计)`);
+
+        // Next query or done
+        if (currentQueryIdx < queries.length) {
+          setTimeout(simulateScrape, 600);
+        } else {
+          setTimeout(simulateExtract, 800);
+        }
+      }
+    }, 400);
+  }
+
+  function simulateExtract() {
+    addLog('sys', '=== Extract 阶段开始 ===');
+    document.getElementById('statusBadge').textContent = 'Extract';
+    document.getElementById('statusBadge').className = 'progress-badge running';
+
+    // Add some demo cards
+    const demoCards = [...DEMO_PROMPTS];
+    let cardIdx = 0;
+
+    const extractInterval = setInterval(() => {
+      if (!running) {
+        clearInterval(extractInterval);
+        return;
+      }
+      if (paused) return;
+
+      if (cardIdx >= demoCards.length) {
+        clearInterval(extractInterval);
+        statExtracted = demoCards.length;
+        updateStats();
+        addLog('ok', `=== 全部完成！提取 ${statExtracted} 条 Prompt ===`);
+        finishPipeline();
+        return;
+      }
+
+      const p = demoCards[cardIdx++];
+      statExtracted++;
+      updateStats();
+      addLog('ok', `+ Extracted: ${p.title}`);
+      addCard(p);
+    }, 700);
+  }
+
+  function finishPipeline() {
+    running = false;
+    stopTimer();
+    document.getElementById('btnStart').disabled = false;
+    document.getElementById('btnStop').disabled = true;
+    document.getElementById('statusBadge').textContent = '完成';
+    document.getElementById('statusBadge').className = 'progress-badge idle';
+    document.getElementById('progressPct').textContent = '100%';
+    document.getElementById('progressFill').style.width = '100%';
+  }
+
+  // ── Tab Switch ───────────────────────────────────────────
+  function switchTab(el, tab) {
+    document.querySelectorAll('.topbar-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    addLog('sys', `切换标签: ${tab}`);
+  }
+
+  function showHelp() {
+    addLog('sys', 'Sparki Scraper v1.0 — 前端 Demo');
+  }
+
+  // ── Init ─────────────────────────────────────────────────
+  addLog('sys', 'Sparki TUI 已启动');
+  addLog('sys', '配置已加载 (3 queries, 29 条记录)');
+  addLog('info', '待机中 — 点击「开始任务」启动 Pipeline');
+</script>
+
+</body>
+</html>

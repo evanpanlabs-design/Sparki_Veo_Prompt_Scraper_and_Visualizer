@@ -193,58 +193,90 @@ def get_tweet_detail(context, tweet_url: str) -> tuple[str, int]:
 
 # ─── Scroll + extract loop ─────────────────────────────────────────────────────
 
-def scroll_and_extract(page, max_scrolls: int = 20, stale_threshold: int = 3,
-                       known_ids: set[str] = None) -> list[dict]:
+def scroll_and_scrape(page, max_scrolls: int = 200,
+                     pause: float = 0.2,
+                     stale_threshold: int = 8,
+                     known_ids: set[str] = None) -> list[dict]:
     """
-    Human-like scroll: random distance, random pauses, wait for content load,
-    skip known tweet IDs.
+    One-scroll-one-scrape: X.com uses a virtualised timeline — only tweets visible
+    in or near the viewport are kept in the DOM. Older tweets are evicted as you scroll.
+
+    Instead of tracking incremental new tweets (which silently drops evicted ones),
+    we keep a UNION of every tweet_id seen so far across all iterations.
+    Once the union stops growing for stale_threshold iterations, we stop.
+
+    Each iteration: one PageDown → brief pause → extract ALL tweets in DOM →
+    add their IDs to the global union → continue.
     """
     if known_ids is None:
         known_ids = set()
-    all_tweets = []
-    seen_ids = set()
+
+    all_tweets_map: dict[str, dict] = {}   # tweet_id -> tweet dict
+    seen_this_run: set[str] = set()        # tweet_ids seen in THIS scroll pass
     stale_count = 0
+    last_scrollY = 0
+    last_print_iter = 0
 
     for i in range(max_scrolls):
-        # Random scroll distance (mimics human reading speed variation)
-        scroll_distance = random.choice([300, 450, 600, 750, 900, 1100])
-        page.evaluate(f"window.scrollTo(0, window.scrollY + {scroll_distance})")
+        # ── One scroll action ─────────────────────────────────────────────────
+        page.keyboard.press("PageDown")
+        _time.sleep(pause)
 
-        # Random pause after scroll — human doesn't scroll uniformly
-        _time.sleep(random.uniform(2.5, 5.5))
-
-        # Wait for tweets to actually render in DOM before extracting
-        try:
-            page.wait_for_selector('[data-testid="tweet"]', timeout=8)
-        except Exception:
-            # No tweets loaded yet, wait a bit more
-            _time.sleep(2)
-
+        # ── Scrape ALL tweets currently in DOM (union strategy) ─────────────
         tweets = extract_search_tweets(page)
-        new_count = 0
+        new_in_union = 0
+
         for t in tweets:
-            # Skip tweets already in DB (known from previous scrapes)
-            if t["tweet_id"] in known_ids:
+            tid = t["tweet_id"]
+            if tid in known_ids:
                 continue
-            if t["tweet_id"] not in seen_ids:
-                seen_ids.add(t["tweet_id"])
-                all_tweets.append(t)
-                new_count += 1
+            if tid not in seen_this_run:
+                seen_this_run.add(tid)
+                all_tweets_map[tid] = t
+                new_in_union += 1
 
-        print(f"    Scroll {i+1}/{max_scrolls} | DOM={len(tweets)} new={new_count} total={len(all_tweets)}", flush=True)
+        # ── Diagnose scroll progress ─────────────────────────────────────────
+        info = page.evaluate("""
+            () => ({
+                scrollY: window.scrollY,
+                scrollH: document.documentElement.scrollHeight,
+                innerH: window.innerHeight,
+            })
+        """)
+        scrollY = info["scrollY"]
+        scrollH = info["scrollH"]
+        delta = scrollY - last_scrollY
+        last_scrollY = scrollY
+        at_bottom = (scrollY + info["innerH"]) >= scrollH - 50
 
-        if new_count == 0:
+        # ── Progress output every 20 iters (flush immediately) ──────────────
+        if i - last_print_iter >= 20:
+            elapsed = (i + 1) * pause
+            print(f"    [iter {i+1}/{max_scrolls}] "
+                  f"UNION={len(all_tweets_map)} new={new_in_union} "
+                  f"scrollY={scrollY} at_bottom={at_bottom} "
+                  f"(~{elapsed:.0f}s elapsed)", flush=True)
+            last_print_iter = i
+
+        # ── Stop conditions ──────────────────────────────────────────────────
+        if new_in_union == 0:
             stale_count += 1
             if stale_count >= stale_threshold:
-                print(f"  No new tweets for {stale_threshold} scrolls — stopping.")
+                print(f"  [DONE] Union stalled {stale_threshold}x (iter {i+1}). "
+                      f"Total: {len(all_tweets_map)} tweets.", flush=True)
                 break
         else:
             stale_count = 0
 
-        # Random delay between scrolls — not uniform
-        rnd_delay(400, 1800)
+        if at_bottom:
+            print(f"  [DONE] Reached bottom (iter {i+1}). "
+                  f"Total: {len(all_tweets_map)} tweets.", flush=True)
+            break
+    else:
+        print(f"  [DONE] Hit max_iter={max_scrolls}. "
+              f"Total: {len(all_tweets_map)} tweets.", flush=True)
 
-    return all_tweets
+    return list(all_tweets_map.values())
 
 
 # ─── Load config ───────────────────────────────────────────────────────────────
@@ -329,9 +361,9 @@ def scrape_all(
                 page.close()
                 continue
 
-            # Scroll + extract (known_ids passed to skip already-scraped tweets)
-            raw_tweets = scroll_and_extract(page, max_scrolls=20, stale_threshold=3,
-                                            known_ids=known_ids)
+            # Scroll + extract with one-scroll-one-scrape union strategy
+            raw_tweets = scroll_and_scrape(page, max_scrolls=150, pause=0.2,
+                                            stale_threshold=8, known_ids=known_ids)
             page.close()
 
             query_raw_counts[query] = len(raw_tweets)

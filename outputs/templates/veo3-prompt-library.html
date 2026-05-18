@@ -527,34 +527,29 @@
             overflow: hidden;
         }
 
-        .prompt-meta {
-            display: flex;
-            gap: 10px;
-            font-size: 10px;
-            color: var(--text-tertiary);
-            padding-top: 8px;
-            border-top: 1px solid var(--border);
-        }
-
         .meta-item {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 5px;
+            font-size: 11px;
+            color: var(--text-tertiary);
+            justify-content: flex-end;
         }
 
         .view-more-btn {
             display: block;
             width: 100%;
-            padding: 5px;
+            padding: 6px;
             margin-top: 6px;
             border: 1px solid var(--border);
             background: white;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 500;
             color: var(--text-secondary);
             cursor: pointer;
             border-radius: 6px;
             transition: all 0.15s;
+            text-align: center;
         }
 
         .view-more-btn:hover {
@@ -566,20 +561,93 @@
             padding: 10px 14px;
             background: white;
             display: flex;
-            gap: 10px;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .author-row {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .author-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+            padding-top: 1px;
+        }
+
+        .author-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+        }
+
+        .author-divider {
+            width: 1px;
+            align-self: stretch;
+            background: var(--text-tertiary);
+            opacity: 0.3;
+            flex-shrink: 0;
+        }
+
+        .author-stats-row1 {
+            display: flex;
+            gap: 12px;
+        }
+
+        .author-stats-row2 {
+            display: flex;
+        }
+
+        .author-name {
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+
+        .author-handle {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            line-height: 1.2;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: var(--text-tertiary);
+        }
+
+        .followers-item {
+            font-size: 12px;
+            font-weight: 400;
+            color: var(--text-tertiary);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
         }
 
         .btn {
             flex: 1;
-            padding: 6px 10px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-size: 13px;
-            font-weight: 500;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.15s;
             text-align: center;
             text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         #search-input:focus {
@@ -610,7 +678,6 @@
             border: 2px solid var(--accent);
             color: white;
             font-weight: 600;
-            flex: 1;
         }
 
         .btn-primary:hover {
@@ -621,7 +688,8 @@
 
         .btn-share {
             width: 40px;
-            height: 40px;
+            min-width: 40px;
+            height: 36px;
             padding: 0;
             background: white;
             border: 2px solid var(--border);
@@ -1231,41 +1299,50 @@
                     <div class="card-image">
                         <img src="generated_images/${prompt.id}.png" alt="Prompt preview" loading="lazy" onerror="this.src='https://picsum.photos/seed/${prompt.tweet_id}/550/307'">
                     </div>
-                    <div class="card-header">
-                        <div class="author-avatar">${prompt.author.name[0]}</div>
-                        <div class="author-info">
-                            <div class="author-name">${prompt.author.name}</div>
-                            <div class="author-handle">@${prompt.author.screen_name}</div>
-                        </div>
-                    </div>
                     <div class="card-body">
                         <span class="prompt-category" data-category="${prompt.category}">${prompt.category.replace('-', ' ')}</span>
                         <h3 class="prompt-title">${prompt.title}</h3>
                         <p class="prompt-preview">${prompt.prompt_text}</p>
                         <button class="view-more-btn" onclick="openModal('${prompt.tweet_id}')">&#x1F441; View Full Prompt</button>
-                        <div class="prompt-meta">
-                            <span class="meta-item">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                                ${formatNumber(prompt.engagement.likes)}
-                            </span>
-                            <span class="meta-item">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"></path><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><path d="M7 23l-4-4 4-4"></path><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
-                                ${formatNumber(prompt.engagement.retweets)}
-                            </span>
-                            <span class="meta-item">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                                ${formatNumber(prompt.engagement.replies)}
-                            </span>
-                            <span class="meta-item" style="margin-left: auto;">
-                                ${formatNumber(prompt.author.followers)} followers
-                            </span>
-                        </div>
                     </div>
                     <div class="card-footer">
-                        <button class="btn btn-share" onclick="sharePrompt('${prompt.id}')" title="Share">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                        </button>
-                        <a href="https://sparki.io/create" target="_blank" class="btn btn-primary" onclick="navigator.clipboard.writeText('${prompt.prompt_text.replace(/'/g, "\\'")}')">Try ⚡</a>
+                        <div class="author-row">
+                            <div class="author-left">
+                                <div class="author-avatar">${prompt.author.name[0]}</div>
+                                <div class="author-info">
+                                    <div class="author-name">${prompt.author.name}</div>
+                                    <div class="author-handle">@${prompt.author.screen_name}</div>
+                                </div>
+                            </div>
+                            <div class="author-divider"></div>
+                            <div class="author-right">
+                                <div class="author-stats-row1">
+                                    <span class="meta-item">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                                        ${formatNumber(prompt.engagement.likes)}
+                                    </span>
+                                    <span class="meta-item">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"></path><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><path d="M7 23l-4-4 4-4"></path><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                                        ${formatNumber(prompt.engagement.retweets)}
+                                    </span>
+                                    <span class="meta-item">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                                        ${formatNumber(prompt.engagement.replies)}
+                                    </span>
+                                </div>
+                                <div class="author-stats-row2">
+                                    <span class="meta-item followers-item">
+                                        ${formatNumber(prompt.author.followers)} followers
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn btn-share" onclick="sharePrompt('${prompt.id}')" title="Share">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                            </button>
+                            <a href="https://sparki.io/create" target="_blank" class="btn btn-primary" onclick="navigator.clipboard.writeText('${prompt.prompt_text.replace(/'/g, "\\'")}')">Try ⚡</a>
+                        </div>
                     </div>
                 </article>
             `;
