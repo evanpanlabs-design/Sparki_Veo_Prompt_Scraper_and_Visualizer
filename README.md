@@ -6,13 +6,16 @@
 
 ```bash
 # 安装依赖
-pip install playwright pandas pyyaml requests openai
+pip install playwright pandas pyyaml requests openai flask
 
 # 初始化 cookies（从浏览器登录 x.com 后导出）
 # 保存到 outputs/cookies.json
 
-# 运行 Pipeline
-python scripts/run_pipeline.py
+# 启动 API Server（另一个终端）
+python scripts/sparki_server.py --port 8765
+
+# 打开 GUI
+# 浏览器打开 outputs/sparki_demo.html
 ```
 
 ## 项目结构

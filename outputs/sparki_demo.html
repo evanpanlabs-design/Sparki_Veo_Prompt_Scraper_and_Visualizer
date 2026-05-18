@@ -134,14 +134,53 @@
 
   /* ── Main Grid ─────────────────────────────────────────────── */
   .main {
-    display: grid;
-    grid-template-columns: 320px 1fr 340px;
-    gap: 0;
+    display: flex;
+    flex-direction: row;
     overflow: hidden;
     height: 100%;
   }
+  .main > .panel {
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+  .main > .panel-left  { width: 300px; }
+  .main > .panel-center{ flex: 1; min-width: 200px; }
+  .main > .panel-right { width: 320px; }
 
-  /* ── Left Panel ────────────────────────────────────────────── */
+  /* ── Splitter ───────────────────────────────────────────────── */
+  .splitter {
+    width: 5px;
+    background: var(--border);
+    cursor: col-resize;
+    flex-shrink: 0;
+    transition: background 0.15s;
+    position: relative;
+    z-index: 10;
+    user-select: none;
+  }
+  .splitter:hover, .splitter.dragging {
+    background: var(--accent-blue);
+  }
+  .splitter::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 3px;
+    height: 30px;
+    background: var(--text-muted);
+    border-radius: 2px;
+    opacity: 0.4;
+  }
+  .splitter:hover::after, .splitter.dragging::after {
+    opacity: 0.8;
+  }
+
+  /* ── Panel base ───────────────────────────────────────────── */
   .panel-left {
     background: var(--bg-primary);
     border-right: 1px solid var(--border);
@@ -150,6 +189,7 @@
     display: flex;
     flex-direction: column;
     gap: 20px;
+    cursor: default;
   }
   .panel-section {
     display: flex;
@@ -342,6 +382,10 @@
     flex-direction: column;
     overflow: hidden;
     background: var(--bg-secondary);
+  }
+  .panel-center .cards-area {
+    overflow-y: auto;
+    flex: 1;
   }
 
   /* Progress Section */
@@ -743,7 +787,7 @@
   <div class="main">
 
     <!-- ── LEFT: Config Panel ──────────────────────────────── -->
-    <aside class="panel-left">
+    <aside class="panel panel-left">
 
       <!-- Queries -->
       <div class="panel-section">
@@ -863,8 +907,11 @@
 
     </aside>
 
+    <!-- Splitter: left-center -->
+    <div class="splitter" id="splitter1" onmousedown="startDrag(event, 'left')"></div>
+
     <!-- ── CENTER: Progress + Cards ─────────────────────────── -->
-    <section class="panel-center">
+    <section class="panel panel-center">
 
       <!-- Progress Header -->
       <div class="progress-header">
@@ -917,8 +964,11 @@
 
     </section>
 
+    <!-- Splitter: center-right -->
+    <div class="splitter" id="splitter2" onmousedown="startDrag(event, 'center')"></div>
+
     <!-- ── RIGHT: Log + Data ───────────────────────────────── -->
-    <aside class="panel-right">
+    <aside class="panel panel-right">
 
       <!-- Log -->
       <div style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
@@ -986,6 +1036,60 @@
 </div>
 
 <script>
+  /* ── Resizable Splitter Logic ─────────────────────────────── */
+  let drag = { active: false, edge: null, startX: 0, startW1: 0, startW2: 0 };
+
+  function startDrag(e, edge) {
+    drag.active = true;
+    drag.edge = edge;
+    drag.startX = e.clientX;
+
+    const main = document.querySelector('.main');
+    const pl = main.querySelector('.panel-left');
+    const pc = main.querySelector('.panel-center');
+    const pr = main.querySelector('.panel-right');
+
+    drag.startW1 = pl.getBoundingClientRect().width;
+    if (edge === 'left') {
+      drag.startW2 = pc.getBoundingClientRect().width;
+    } else {
+      drag.startW2 = pr.getBoundingClientRect().width;
+    }
+
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('mouseup', stopDrag);
+    e.preventDefault();
+  }
+
+  function onDrag(e) {
+    if (!drag.active) return;
+    const dx = e.clientX - drag.startX;
+    const main = document.querySelector('.main');
+    const pl = main.querySelector('.panel-left');
+    const pc = main.querySelector('.panel-center');
+    const pr = main.querySelector('.panel-right');
+
+    if (drag.edge === 'left') {
+      // Resize left panel and center panel
+      const newW1 = Math.max(180, Math.min(600, drag.startW1 + dx));
+      const newW2 = Math.max(200, drag.startW2 - dx);
+      pl.style.width = newW1 + 'px';
+      pc.style.width = 'calc(100% - ' + newW1 + 'px - ' + pr.offsetWidth + 'px - 10px)';
+    } else {
+      // Resize center panel and right panel
+      const newW2 = Math.max(180, Math.min(600, drag.startW2 + dx));
+      const newW3 = Math.max(180, Math.min(500, drag.startW2 - dx));
+      pr.style.width = newW3 + 'px';
+      pc.style.width = 'calc(100% - ' + pl.offsetWidth + 'px - ' + newW3 + 'px - 10px)';
+    }
+  }
+
+  function stopDrag() {
+    drag.active = false;
+    document.removeEventListener('mousemove', onDrag);
+    document.removeEventListener('mouseup', stopDrag);
+  }
+
   // ── State ──────────────────────────────────────────────────
   let running = false;
   let paused = false;
@@ -1073,10 +1177,27 @@
     if (timerInterval) clearInterval(timerInterval);
   }
 
-  // ── Pipeline Control ──────────────────────────────────────
-  function startPipeline() {
+  // ── State ──────────────────────────────────────────────────
+  let running = false;
+  let paused = false;
+  let startTime = null;
+  let timerInterval = null;
+  let logLines = [];
+  let totalQueries = 3;
+  let currentQueryIdx = 0;
+  let statTweets = 0;
+  let statExtracted = 0;
+  let statFailed = 0;
+  let eventSource = null;
+
+  // ── Backend API ───────────────────────────────────────────
+  const API_BASE = 'http://localhost:8765';
+
+  async function startPipeline() {
     if (running) {
       if (paused) {
+        // Resume
+        await fetch(`${API_BASE}/api/pause`, { method: 'POST' });
         paused = false;
         document.getElementById('statusBadge').textContent = '运行中';
         document.getElementById('statusBadge').className = 'progress-badge running';
@@ -1086,12 +1207,41 @@
       return;
     }
 
+    // Gather config from UI
+    const queries = tags.map(t => t.text);
+    const config = {
+      run_scrape: document.querySelector('#chip-scrape input').checked,
+      run_extract: document.querySelector('#chip-extract input').checked,
+      run_html: document.querySelector('#chip-html input').checked,
+      queries: queries,
+      scraper: {
+        headless: document.querySelector('#headlessToggle input').checked,
+        max_scrolls: parseInt(document.getElementById('maxScrolls').value) || 150,
+        pause_between_scrolls: parseFloat(document.getElementById('pause').value) || 0.2,
+        stale_threshold: parseInt(document.getElementById('staleThr').value) || 8,
+      },
+      engagement_filter: {
+        min_likes: parseInt(document.getElementById('minLikes').value) || 50,
+        min_retweets: parseInt(document.getElementById('minRt').value) || 20,
+        min_followers: parseInt(document.getElementById('minFlw').value) || 1000,
+      },
+      llm: {
+        api_base: document.getElementById('apiBase').value || 'https://api.minimaxi.com/v1',
+        model: document.getElementById('llmModel').value || 'MiniMax-M2.7',
+      },
+      gcs: {
+        bucket_name: document.getElementById('gcsBucket').value || '',
+        gcp_project_id: document.getElementById('gcpProject').value || '',
+      },
+    };
+
     running = true;
     paused = false;
     currentQueryIdx = 0;
     statTweets = 0;
     statExtracted = 0;
     statFailed = 0;
+    totalQueries = queries.length;
 
     document.getElementById('btnStart').disabled = true;
     document.getElementById('btnStop').disabled = false;
@@ -1099,17 +1249,96 @@
     document.getElementById('statusBadge').className = 'progress-badge running';
     document.getElementById('emptyState').style.display = 'none';
 
+    // Clear existing cards
+    const cardsArea = document.getElementById('cardsArea');
+    cardsArea.querySelectorAll('.card').forEach(c => c.remove());
+
     startTimer();
     addLog('sys', '=== Pipeline 启动 ===');
+    addLog('info', `连接后端 ${API_BASE}...`);
 
-    // Simulate phases
-    simulateScrape();
+    // Start SSE connection
+    if (eventSource) eventSource.close();
+    eventSource = new EventSource(`${API_BASE}/api/logs`);
+    eventSource.onmessage = handleServerEvent;
+    eventSource.onerror = () => {
+      addLog('error', 'SSE 连接断开');
+    };
+
+    // Start pipeline via POST
+    try {
+      const res = await fetch(`${API_BASE}/api/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      });
+      const data = await res.json();
+      addLog('info', `后端响应: ${data.mode || 'OK'}`);
+    } catch (e) {
+      addLog('error', `连接失败: ${e.message}`);
+      stopPipeline();
+    }
   }
 
-  function stopPipeline() {
+  function handleServerEvent(e) {
+    try {
+      const msg = JSON.parse(e.data);
+
+      // Update stats from server
+      if (msg.stats) {
+        const s = msg.stats;
+        statTweets = s.total_tweets || statTweets;
+        statExtracted = s.extracted_prompts || statExtracted;
+        statFailed = s.failed || statFailed;
+        currentQueryIdx = s.current_query_idx || currentQueryIdx;
+        totalQueries = s.total_queries || totalQueries;
+
+        document.getElementById('statTweets').textContent = statTweets;
+        document.getElementById('statExtracted').textContent = statExtracted;
+        document.getElementById('statFailed').textContent = statFailed;
+        document.getElementById('statQueries').textContent = totalQueries;
+
+        const pct = s.progress_pct || 0;
+        document.getElementById('progressPct').textContent = pct + '%';
+        document.getElementById('progressFill').style.width = pct + '%';
+
+        if (s.current_query) {
+          addLog('info', `当前Query: ${s.current_query}`);
+        }
+      }
+
+      // Handle log messages
+      if (msg.type === 'log') {
+        addLog(msg.level || 'info', msg.msg);
+      }
+
+      // Handle extracted prompt
+      if (msg.type === 'prompt' && msg.prompt) {
+        addLog('ok', `+ Extracted: ${msg.prompt.title || '?'}`);
+        addCard(msg.prompt);
+        statExtracted++;
+        document.getElementById('statExtracted').textContent = statExtracted;
+      }
+
+      // Handle done
+      if (msg.type === 'done') {
+        addLog('sys', '=== Pipeline 完成 ===');
+        if (eventSource) eventSource.close();
+        finishPipeline();
+      }
+    } catch (err) {
+      // Ignore parse errors for heartbeats
+    }
+  }
+
+  async function stopPipeline() {
+    try {
+      await fetch(`${API_BASE}/api/stop`, { method: 'POST' });
+    } catch (e) { /* ignore */ }
     running = false;
     paused = false;
     stopTimer();
+    if (eventSource) eventSource.close();
     document.getElementById('btnStart').disabled = false;
     document.getElementById('btnStop').disabled = true;
     document.getElementById('statusBadge').textContent = '已停止';
@@ -1117,125 +1346,10 @@
     addLog('warn', '任务已停止');
   }
 
-  function updateStats() {
-    document.getElementById('statTweets').textContent = statTweets;
-    document.getElementById('statExtracted').textContent = statExtracted;
-    document.getElementById('statFailed').textContent = statFailed;
-    const total = totalQueries;
-    const pct = Math.round((currentQueryIdx / total) * 100);
-    document.getElementById('progressPct').textContent = pct + '%';
-    document.getElementById('progressFill').style.width = pct + '%';
-  }
-
-  // ── Simulation (frontend-only demo) ─────────────────────
-  const DEMO_PROMPTS = [
-    { title: 'Luxury Chronograph Watch', cat: 'video-generation', author: '@M', preview: 'A rugged, matte-black chronograph watch with bold orange accents is tightly framed between two textured rock formations...', likes: 142, rt: 23 },
-    { title: 'Wrapped vs Unwrapped Toffee', cat: 'cinematic', author: '@simeon-sanai', preview: 'A quiet outdoor setting with a clean surface under soft natural light. Two identical toffees are placed side by side...', likes: 96, rt: 15 },
-    { title: 'Futuristic City at Night', cat: 'image-generation', author: '@aiart labs', preview: 'A sprawling cyberpunk metropolis illuminated by neon billboards and flying vehicles, viewed from above...', likes: 320, rt: 67 },
-    { title: 'Portrait of a Stranger', cat: 'cinematic', author: '@davidfilmmaker', preview: 'A candid portrait of an elderly man on a busy Tokyo street, warm evening light casting long shadows...', likes: 87, rt: 12 },
-    { title: 'Mountain Product Shot', cat: 'product-photography', author: '@luxurywatch', preview: 'A matte-black chronograph watch nestled between granite boulders at golden hour, dust particles floating...', likes: 204, rt: 38 },
-  ];
-
-  function addCard(prompt) {
-    const area = document.getElementById('cardsArea');
-    const empty = document.getElementById('emptyState');
-    if (empty) empty.style.display = 'none';
-
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.innerHTML = `
-      <div class="card-header">
-        <div class="card-title">${escapeHtml(prompt.title)}</div>
-        <span class="card-cat">${prompt.cat}</span>
-      </div>
-      <div class="card-preview">${escapeHtml(prompt.preview)}</div>
-      <div class="card-footer">
-        <div class="card-author">
-          <div class="card-author-avatar">${prompt.author[1] || '?'}</div>
-          <span>${prompt.author}</span>
-        </div>
-        <div class="card-engage">
-          <span>♥ ${prompt.likes}</span>
-          <span>↔ ${prompt.rt}</span>
-        </div>
-      </div>
-    `;
-    area.insertBefore(card, area.firstChild);
-  }
-
-  function simulateScrape() {
-    if (!running) return;
-
-    const queries = ['Veo 3.1 prompt', 'AI video generation', 'Gemini image prompt'];
-    if (currentQueryIdx >= queries.length) {
-      simulateExtract();
-      return;
-    }
-
-    const q = queries[currentQueryIdx];
-    addLog('info', `[1/3] Scrape → Query: "${q}"`);
-
-    // Simulate scroll ticks
-    let scrollCount = 0;
-    const scrollInterval = setInterval(() => {
-      if (!running || paused) return;
-      scrollCount++;
-      statTweets += Math.floor(Math.random() * 12 + 5);
-      document.getElementById('statTweets').textContent = statTweets;
-      addLog('info', `  ↳ 滚动 #${scrollCount} → +${Math.floor(Math.random()*12+5)} 条推文`);
-
-      if (scrollCount >= 8) {
-        clearInterval(scrollInterval);
-        currentQueryIdx++;
-        updateStats();
-        addLog('ok', `  ✓ Query "${q}" 完成 (${statTweets} 条累计)`);
-
-        // Next query or done
-        if (currentQueryIdx < queries.length) {
-          setTimeout(simulateScrape, 600);
-        } else {
-          setTimeout(simulateExtract, 800);
-        }
-      }
-    }, 400);
-  }
-
-  function simulateExtract() {
-    addLog('sys', '=== Extract 阶段开始 ===');
-    document.getElementById('statusBadge').textContent = 'Extract';
-    document.getElementById('statusBadge').className = 'progress-badge running';
-
-    // Add some demo cards
-    const demoCards = [...DEMO_PROMPTS];
-    let cardIdx = 0;
-
-    const extractInterval = setInterval(() => {
-      if (!running) {
-        clearInterval(extractInterval);
-        return;
-      }
-      if (paused) return;
-
-      if (cardIdx >= demoCards.length) {
-        clearInterval(extractInterval);
-        statExtracted = demoCards.length;
-        updateStats();
-        addLog('ok', `=== 全部完成！提取 ${statExtracted} 条 Prompt ===`);
-        finishPipeline();
-        return;
-      }
-
-      const p = demoCards[cardIdx++];
-      statExtracted++;
-      updateStats();
-      addLog('ok', `+ Extracted: ${p.title}`);
-      addCard(p);
-    }, 700);
-  }
-
   function finishPipeline() {
     running = false;
     stopTimer();
+    if (eventSource) eventSource.close();
     document.getElementById('btnStart').disabled = false;
     document.getElementById('btnStop').disabled = true;
     document.getElementById('statusBadge').textContent = '完成';
@@ -1243,6 +1357,43 @@
     document.getElementById('progressPct').textContent = '100%';
     document.getElementById('progressFill').style.width = '100%';
   }
+
+  function addCard(prompt) {
+    const area = document.getElementById('cardsArea');
+    const empty = document.getElementById('emptyState');
+    if (empty) empty.style.display = 'none';
+
+    const title = prompt.title || 'Untitled';
+    const cat = prompt.category || 'general';
+    const preview = prompt.prompt_text || prompt.preview || '';
+    const author = prompt.author_name || prompt.author?.name || 'Unknown';
+    const authorInitial = author[1] || author[0] || '?';
+    const likes = prompt.likes_count || 0;
+    const rt = prompt.retweet_count || 0;
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="card-header">
+        <div class="card-title">${escapeHtml(title)}</div>
+        <span class="card-cat">${escapeHtml(cat)}</span>
+      </div>
+      <div class="card-preview">${escapeHtml(preview.slice(0, 200))}</div>
+      <div class="card-footer">
+        <div class="card-author">
+          <div class="card-author-avatar">${escapeHtml(authorInitial.toUpperCase())}</div>
+          <span>${escapeHtml(author)}</span>
+        </div>
+        <div class="card-engage">
+          <span>♥ ${likes}</span>
+          <span>↔ ${rt}</span>
+        </div>
+      </div>
+    `;
+    area.insertBefore(card, area.firstChild);
+  }
+
+  // ── Simulation removed — now using real SSE backend ───────
 
   // ── Tab Switch ───────────────────────────────────────────
   function switchTab(el, tab) {

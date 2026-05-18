@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python -m py_compile scripts/x_scraper_pw.py)"
+      "Bash(python -m py_compile scripts/x_scraper_pw.py)",
+      "Bash(python scripts/build_html.py --output /tmp/test_veo3.html)",
+      "Bash(chcp 65001)",
+      "Bash(cp /tmp/test_veo3.html /tmp/sparki-web/index.html && echo \"Copied OK\")",
+      "Bash(python scripts/build_html.py --no-validate)"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
     ]
   }
 }
