@@ -31,10 +31,12 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from flask import Flask, jsonify, request, Response, stream_with_context
+from flask_cors import CORS
 
 # ─── App Setup ────────────────────────────────────────────────────────────────
 
 app = Flask(__name__, static_folder=None)
+CORS(app)
 
 # ─── Task State (shared across threads) ─────────────────────────────────────
 
@@ -118,6 +120,103 @@ class ServerTaskState:
 state = ServerTaskState()
 
 
+# ─── Cookie Helpers ─────────────────────────────────────────────────────────
+
+def load_cookies(cookies_path: Path) -> list[dict]:
+    """Load cookies from flat dict format (same as x_multi_search.py)."""
+    with open(cookies_path, "r", encoding="utf-8") as f:
+        cookies = json.load(f)
+    return [{"name": k, "value": v, "domain": ".x.com", "path": "/"} for k, v in cookies.items()]
+
+
+def validate_cookies(cookies_path: Path) -> tuple[bool, str]:
+    """Verify cookies.json can successfully log into X.com."""
+    if not cookies_path.exists():
+        return False, "cookies.json not found"
+
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            ctx = browser.new_context(
+                extra_http_headers={"Accept-Language": "en-US,en;q=0.9"},
+            )
+            ctx.add_cookies(load_cookies(cookies_path))
+            page = ctx.new_page()
+            page.goto("https://x.com/home", timeout=15_000)
+            page.wait_for_selector('[data-testid="primaryColumn"]', timeout=10_000)
+            browser.close()
+            return True, "cookies valid"
+    except Exception as e:
+        return False, str(e)[:120]
+
+
+def interactive_login(cookies_path: Path) -> bool:
+    """Open visible browser for user to log in, save cookies on tab close."""
+    from playwright.sync_api import sync_playwright
+
+    print("[Sparki] Cookies invalid — opening login window...")
+    state.add_log("WARN", "Cookies 无效，正在打开登录窗口...")
+
+    try:
+        browser = None
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=False)
+            ctx = browser.new_context(
+                viewport={"width": 1280, "height": 800},
+                locale="en-US",
+            )
+            page = ctx.new_page()
+            page.goto("https://x.com/i/flow/login", timeout=30_000)
+
+            login_done = threading.Event()
+
+            def on_page_close(close_page):
+                login_done.set()
+
+            page.on("close", on_page_close)
+
+            # Poll for successful login every 5s
+            while not login_done.is_set():
+                try:
+                    page.wait_for_selector('[data-testid="primaryColumn"]', timeout=5)
+                    login_done.set()
+                    state.add_log("INFO", "登录成功！正在保存 cookies...")
+                except Exception:
+                    pass  # still waiting
+
+            if page.url == "about:blank" or page.url.startswith("about:"):
+                state.add_log("WARN", "用户关闭了登录窗口，登录取消")
+                try:
+                    browser.close()
+                except Exception:
+                    pass
+                return False
+
+            # Save cookies in flat dict format (same as browser_auth.py)
+            cookies = ctx.cookies()
+            flat = {c["name"]: c["value"] for c in cookies}
+            cookies_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(cookies_path, "w", encoding="utf-8") as f:
+                json.dump(flat, f, ensure_ascii=False, indent=2)
+
+            state.add_log("INFO", f"Cookies 已保存 ({len(flat)} 条)")
+            try:
+                browser.close()
+            except Exception:
+                pass
+            return True
+
+    except Exception as e:
+        state.add_log("ERROR", f"登录失败: {e}")
+        if browser:
+            try:
+                browser.close()
+            except Exception:
+                pass
+        return False
+
+
 # ─── Pipeline Workers ────────────────────────────────────────────────────────
 
 def run_scrape(cfg: dict):
@@ -141,10 +240,23 @@ def run_scrape(cfg: dict):
         from playwright.sync_api import sync_playwright
 
         cookies = PROJECT_ROOT / "outputs" / "cookies.json"
-        if not cookies.exists():
-            state.add_log("ERROR", f"cookies.json not found at {cookies}")
-            state.running = False
-            return
+        # Validate existing cookies
+        valid, reason = validate_cookies(cookies)
+        if not valid:
+            state.add_log("WARN", f"Cookies 无效: {reason}")
+            state.add_log("INFO", "正在打开登录窗口...")
+            ok = interactive_login(cookies)
+            if not ok:
+                state.add_log("ERROR", "登录失败，Scrape 取消")
+                state.running = False
+                return
+            # Verify new cookies
+            valid2, _ = validate_cookies(cookies)
+            if not valid2:
+                state.add_log("ERROR", "新 Cookies 仍然无效")
+                state.running = False
+                return
+            state.add_log("INFO", "Cookies 验证通过，开始 Scrape")
 
         rows = _conn().execute("SELECT MAX(id) FROM scrapes").fetchone()
         scrape_id = rows[0] if rows and rows[0] else None
@@ -166,7 +278,9 @@ def run_scrape(cfg: dict):
                     headless=sc.get("headless", True),
                     proxy={"server": proxy_str} if proxy_str else None,
                 )
-                ctx = browser.contexts[0]
+                ctx = browser.new_context(
+                    extra_http_headers={"Accept-Language": "en-US,en;q=0.9"},
+                )
                 page = ctx.new_page()
                 page.goto(f"https://x.com/search?q={query.replace(' ', '+')}", timeout=30_000)
                 page.wait_for_timeout(2_000)
@@ -433,19 +547,22 @@ def api_logs():
     def generate():
         idx = 0
         while True:
-            if state.stopped and not state.running:
-                yield f"data: {json.dumps({'type':'done','stats':state.get_stats()})}\n\n"
-                break
-
             new_logs = state.get_logs_since(idx)
             for log in new_logs:
                 yield f"data: {json.dumps({'type':'log','ts':log['ts'],'level':log['level'],'msg':log['msg'],'stats':state.get_stats()})}\n\n"
             if new_logs:
                 idx += len(new_logs)
 
-            time.sleep(0.3)
+            # Exit immediately when pipeline has finished
+            if state.progress_pct == 100 and not state.running:
+                yield f"data: {json.dumps({'type':'done','stats':state.get_stats()})}\n\n"
+                break
 
-    return Response(stream_with_context(generate()), mimetype="text/event-stream")
+            # Keepalive
+            yield ": \n\n"
+            time.sleep(3)
+
+    return Response(stream_with_context(generate()), mimetype="text/event-stream", headers={"X-Accel-Buffering": "no"})
 
 
 @app.route("/api/prompts", methods=["GET"])
@@ -476,7 +593,7 @@ def health():
 
 def main():
     parser = argparse.ArgumentParser(description="Sparki HTTP API Server")
-    parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--port", type=int, default=8766)
     parser.add_argument("--host", default="127.0.0.1")
     args = parser.parse_args()
 
